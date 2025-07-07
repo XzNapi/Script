@@ -364,7 +364,7 @@ Players.PlayerRemoving:Connect(function()
 end)
 
 local autoPumpEnabled = false
-local pumpSpeed = 0.5
+local pumpSpeed = 0 -- Default kecepatan diatur menjadi 0 untuk ekstrem
 local plotNumber = 8
 
 local autoPumpBtn = createButton("Auto Pump: OFF")
@@ -429,7 +429,7 @@ end)
 pumpInput.FocusLost:Connect(function(enterPressed)
 	if enterPressed then
 		local val = tonumber(pumpInput.Text)
-		if val and val > 0 then
+		if val and val >= 0 then -- Memperbolehkan 0 untuk kecepatan ekstrem
 			pumpSpeed = val
 		else
 			pumpInput.Text = tostring(pumpSpeed)
@@ -458,7 +458,10 @@ coroutine.wrap(function()
                     game:GetService("ReplicatedStorage").Events.Gameplay.ClickFoodPump:FireServer(unpack(args))
                 end
             end)
-            task.wait(pumpSpeed)
+            -- Menghapus atau mengatur task.wait(0) untuk kecepatan ekstrem
+            if pumpSpeed > 0 then
+                task.wait(pumpSpeed)
+            end
         end
     end
 end)()
