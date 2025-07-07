@@ -364,8 +364,8 @@ Players.PlayerRemoving:Connect(function()
 end)
 
 local autoPumpEnabled = false
-local pumpSpeed = 0 -- Default kecepatan diatur menjadi 0 untuk ekstrem
-local plotNumber = 8
+local pumpSpeed = 0
+local plotNumbers = {8} -- Mengubah ini menjadi tabel, default ke plot 8
 
 local autoPumpBtn = createButton("Auto Pump: OFF")
 
@@ -403,7 +403,7 @@ local plotLabel = Instance.new("TextLabel", pumpFrame)
 plotLabel.Size = UDim2.new(1, 0, 0, 25)
 plotLabel.Position = UDim2.new(0, 0, 0, 60)
 plotLabel.BackgroundTransparency = 1
-plotLabel.Text = "Plot Number:"
+plotLabel.Text = "Plot Numbers (e.g., 1, 8, 12):"
 plotLabel.Font = Enum.Font.Gotham
 plotLabel.TextSize = 14
 plotLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -411,8 +411,8 @@ plotLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 local plotInput = Instance.new("TextBox", pumpFrame)
 plotInput.Size = UDim2.new(1, -20, 0, 30)
 plotInput.Position = UDim2.new(0, 10, 0, 85)
-plotInput.PlaceholderText = "cth: 8"
-plotInput.Text = tostring(plotNumber)
+plotInput.PlaceholderText = "cth: 1, 8, 12"
+plotInput.Text = table.concat(plotNumbers, ", ") -- Menampilkan daftar plot default
 plotInput.Font = Enum.Font.Gotham
 plotInput.TextSize = 14
 plotInput.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
@@ -429,7 +429,7 @@ end)
 pumpInput.FocusLost:Connect(function(enterPressed)
 	if enterPressed then
 		local val = tonumber(pumpInput.Text)
-		if val and val >= 0 then -- Memperbolehkan 0 untuk kecepatan ekstrem
+		if val and val >= 0 then
 			pumpSpeed = val
 		else
 			pumpInput.Text = tostring(pumpSpeed)
@@ -439,11 +439,18 @@ end)
 
 plotInput.FocusLost:Connect(function(enterPressed)
 	if enterPressed then
-		local val = tonumber(plotInput.Text)
-		if val and val > 0 then
-			plotNumber = val
+		local inputText = plotInput.Text
+		local newPlotNumbers = {}
+		for num_str in string.gmatch(inputText, "[%d]+") do
+			local num = tonumber(num_str)
+			if num and num > 0 then
+				table.insert(newPlotNumbers, num)
+			end
+		end
+		if #newPlotNumbers > 0 then
+			plotNumbers = newPlotNumbers
 		else
-			plotInput.Text = tostring(plotNumber)
+			plotInput.Text = table.concat(plotNumbers, ", ") -- Kembalikan ke nilai sebelumnya jika input tidak valid
 		end
 	end
 end)
@@ -452,13 +459,14 @@ coroutine.wrap(function()
     while task.wait() do
         if autoPumpEnabled then
             pcall(function()
-                local plot = workspace.Gameplay.Plots:FindFirstChild(tostring(plotNumber))
-                if plot then
-                    local args = {[1] = plot}
-                    game:GetService("ReplicatedStorage").Events.Gameplay.ClickFoodPump:FireServer(unpack(args))
+                for _, plotNum in ipairs(plotNumbers) do
+                    local plot = workspace.Gameplay.Plots:FindFirstChild(tostring(plotNum))
+                    if plot then
+                        local args = {[1] = plot}
+                        game:GetService("ReplicatedStorage").Events.Gameplay.ClickFoodPump:FireServer(unpack(args))
+                    end
                 end
             end)
-            -- Menghapus atau mengatur task.wait(0) untuk kecepatan ekstrem
             if pumpSpeed > 0 then
                 task.wait(pumpSpeed)
             end
