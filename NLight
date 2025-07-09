@@ -401,7 +401,421 @@ Instance.new("UICorner", pumpInput).CornerRadius = UDim.new(0, 6)
 
 local plotLabel = Instance.new("TextLabel", pumpFrame)
 plotLabel.Size = UDim2.new(1, 0, 0, 25)
-plotLabel.Position = UDim2.new(0, 0, 0, 60)
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+local RS = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
+
+local gui = Instance.new("ScreenGui", LocalPlayer:WaitForChild("PlayerGui"))
+gui.Name = "NLightV1"
+gui.ResetOnSpawn = false
+
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0, 300, 0, 250)
+frame.Position = UDim2.new(0.05, 0, 0.2, 0)
+frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+frame.Active = true
+frame.Draggable = true
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 10)
+
+local titleBar = Instance.new("Frame", frame)
+titleBar.Size = UDim2.new(1, 0, 0, 30)
+titleBar.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+Instance.new("UICorner", titleBar).CornerRadius = UDim.new(0, 10)
+
+local title = Instance.new("TextLabel", titleBar)
+title.Text = "NLight | V.1"
+title.Font = Enum.Font.GothamSemibold
+title.TextSize = 16
+title.TextColor3 = Color3.fromRGB(255,255,255)
+title.BackgroundTransparency = 1
+title.Size = UDim2.new(1, -60, 1, 0)
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Position = UDim2.new(0, 10, 0, 0)
+
+local minimize = Instance.new("TextButton", titleBar)
+minimize.Text = "-"
+minimize.Font = Enum.Font.GothamBold
+minimize.TextSize = 18
+minimize.Size = UDim2.new(0, 30, 1, 0)
+minimize.Position = UDim2.new(1, -60, 0, 0)
+minimize.BackgroundTransparency = 1
+minimize.TextColor3 = Color3.fromRGB(255,255,255)
+
+local delete = Instance.new("TextButton", titleBar)
+delete.Text = "×"
+delete.Font = Enum.Font.GothamBold
+delete.TextSize = 18
+delete.Size = UDim2.new(0, 30, 1, 0)
+delete.Position = UDim2.new(1, -30, 0, 0)
+delete.BackgroundTransparency = 1
+delete.TextColor3 = Color3.fromRGB(255,100,100)
+
+local scroll = Instance.new("ScrollingFrame", frame)
+scroll.Position = UDim2.new(0, 0, 0, 30)
+scroll.Size = UDim2.new(1, 0, 1, -30)
+scroll.CanvasSize = UDim2.new(0, 0, 0, 1000)
+scroll.BackgroundTransparency = 1
+scroll.ScrollBarThickness = 6
+
+local layout = Instance.new("UIListLayout", scroll)
+layout.Padding = UDim.new(0, 10)
+layout.SortOrder = Enum.SortOrder.LayoutOrder
+
+local padding = Instance.new("UIPadding", scroll)
+padding.PaddingTop = UDim.new(0, 10)
+padding.PaddingLeft = UDim.new(0, 20)
+padding.PaddingRight = UDim.new(0, 20)
+
+local function createButton(text)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, 0, 0, 35)
+    btn.Text = text
+    btn.Font = Enum.Font.Gotham
+    btn.TextSize = 16
+    btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+    btn.Parent = scroll
+    return btn
+end
+
+local noclip = false
+local noclipBtn = createButton("NoClip: OFF")
+noclipBtn.MouseButton1Click:Connect(function()
+    noclip = not noclip
+    noclipBtn.Text = noclip and "NoClip: ON" or "NoClip: OFF"
+end)
+
+RS.Stepped:Connect(function()
+    if noclip and LocalPlayer.Character then
+        for _, v in pairs(LocalPlayer.Character:GetDescendants()) do
+            if v:IsA("BasePart") then v.CanCollide = false end
+        end
+    end
+end)
+
+local infJump = false
+local infJumpBtn = createButton("Inf Jump: OFF")
+infJumpBtn.MouseButton1Click:Connect(function()
+    infJump = not infJump
+    infJumpBtn.Text = infJump and "Inf Jump: ON" or "Inf Jump: OFF"
+end)
+
+UIS.JumpRequest:Connect(function()
+    if infJump and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+        LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState(Enum.HumanoidStateType.Jumping)
+    end
+end)
+
+local speedEnabled = false
+local speedAmount = 50
+
+local speedBtn = createButton("Speed: OFF")
+
+local speedFrame = Instance.new("Frame", gui)
+speedFrame.Size = UDim2.new(0, 150, 0, 70)
+speedFrame.Position = UDim2.new(0.4, 0, 0.2, 0)
+speedFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+speedFrame.Visible = false
+speedFrame.Active = true
+speedFrame.Draggable = true
+Instance.new("UICorner", speedFrame).CornerRadius = UDim.new(0, 10)
+
+local speedLabel = Instance.new("TextLabel", speedFrame)
+speedLabel.Size = UDim2.new(1, 0, 0, 25)
+speedLabel.Position = UDim2.new(0, 0, 0, 0)
+speedLabel.BackgroundTransparency = 1
+speedLabel.Text = "Set Speed:"
+speedLabel.Font = Enum.Font.Gotham
+speedLabel.TextSize = 14
+speedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+local speedInput = Instance.new("TextBox", speedFrame)
+speedInput.Size = UDim2.new(1, -20, 0, 30)
+speedInput.Position = UDim2.new(0, 10, 0, 30)
+speedInput.PlaceholderText = "contoh: 50"
+speedInput.Text = tostring(speedAmount)
+speedInput.Font = Enum.Font.Gotham
+speedInput.TextSize = 14
+speedInput.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+speedInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+speedInput.ClearTextOnFocus = false
+Instance.new("UICorner", speedInput).CornerRadius = UDim.new(0, 6)
+
+speedBtn.MouseButton1Click:Connect(function()
+	speedEnabled = not speedEnabled
+	speedBtn.Text = speedEnabled and "Speed: ON" or "Speed: OFF"
+	speedFrame.Visible = speedEnabled
+end)
+
+speedInput.FocusLost:Connect(function(enterPressed)
+	if enterPressed then
+		local val = tonumber(speedInput.Text)
+		if val and val > 0 and val <= 100000 then
+			speedAmount = val
+		else
+			speedInput.Text = tostring(speedAmount)
+		end
+	end
+end)
+
+RS.RenderStepped:Connect(function()
+	if speedEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+		LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = speedAmount
+	end
+end)
+
+local antiAFK = false
+local afkBtn = createButton("Anti-AFK: OFF")
+afkBtn.MouseButton1Click:Connect(function()
+    antiAFK = not antiAFK
+    afkBtn.Text = antiAFK and "Anti-AFK: ON" or "Anti-AFK: OFF"
+    if antiAFK then
+        pcall(function()
+            for _, conn in pairs(getconnections(LocalPlayer.Idled)) do
+                conn:Disable()
+            end
+        end)
+    end
+end)
+
+local espEnabled = false
+local espBtn = createButton("ESP: OFF")
+local espObjects = {}
+
+local function clearESP()
+    for _, obj in pairs(espObjects) do
+        if obj.NameTag then obj.NameTag:Destroy() end
+        if obj.Box then obj.Box:Destroy() end
+    end
+    espObjects = {}
+end
+
+local function createESP(target)
+    if target == LocalPlayer then return end
+    local char = target.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+    local hrp = char.HumanoidRootPart
+
+    local tag = Instance.new("BillboardGui")  
+    tag.Name = "ESP_NameTag"  
+    tag.Size = UDim2.new(0, 150, 0, 30)  
+    tag.StudsOffset = Vector3.new(0, 3, 0)  
+    tag.AlwaysOnTop = true  
+    tag.Adornee = hrp  
+    tag.LightInfluence = 0  
+    tag.MaxDistance = 10000  
+    tag.Parent = hrp  
+
+    local label = Instance.new("TextLabel", tag)  
+    label.Size = UDim2.new(1, 0, 1, 0)  
+    label.BackgroundTransparency = 0.25  
+    label.BackgroundColor3 = Color3.fromRGB(0, 0, 0)  
+    label.TextColor3 = Color3.fromRGB(0, 255, 127)  
+    label.TextStrokeTransparency = 0.5  
+    label.Text = target.DisplayName  
+    label.Font = Enum.Font.GothamBold  
+    label.TextScaled = true  
+    Instance.new("UICorner", label).CornerRadius = UDim.new(0, 4)  
+
+    local box = Instance.new("BoxHandleAdornment")  
+    box.Name = "ESP_Box"  
+    box.Size = Vector3.new(4, 6, 2)  
+    box.AlwaysOnTop = true  
+    box.ZIndex = 5  
+    box.Color3 = Color3.fromRGB(0, 255, 127)  
+    box.Transparency = 0.7  
+    box.Adornee = hrp  
+    box.Parent = hrp  
+
+    espObjects[target] = {NameTag = tag, Box = box}
+end
+
+espBtn.MouseButton1Click:Connect(function()
+    espEnabled = not espEnabled
+    espBtn.Text = espEnabled and "ESP: ON" or "ESP: OFF"
+    if espEnabled then
+        clearESP()
+        for _, p in pairs(Players:GetPlayers()) do
+            createESP(p)
+        end
+    else
+        clearESP()
+    end
+end)
+
+local aimEnabled = false
+local aimBtn = createButton("Aimbot: OFF")
+aimBtn.MouseButton1Click:Connect(function()
+    aimEnabled = not aimEnabled
+    aimBtn.Text = aimEnabled and "Aimbot: ON" or "Aimbot: OFF"
+end)
+
+local function getClosest()
+    local maxDist = math.huge
+    local closest = nil
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("Head") and p.Character:FindFirstChildOfClass("Humanoid") and p.Character.Humanoid.Health > 0 then
+            local pos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(p.Character.Head.Position)
+            if onScreen then
+                local dist = (Vector2.new(pos.X, pos.Y) - UIS:GetMouseLocation()).Magnitude
+                if dist < maxDist then
+                    maxDist = dist
+                    closest = p
+                end
+            end
+        end
+    end
+    return closest
+end
+
+RS.RenderStepped:Connect(function()
+    if aimEnabled and UIS:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
+        local closest = getClosest()
+        if closest and closest.Character and closest.Character:FindFirstChild("Head") then
+            workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, closest.Character.Head.Position)
+        end
+    end
+end)
+
+local tpEnabled = false
+local tpBtn = createButton("Teleport: OFF")
+
+local tpFrame = Instance.new("Frame", gui)
+tpFrame.Size = UDim2.new(0, 200, 0, 180)
+tpFrame.Position = UDim2.new(0.4, 220, 0.2, 0)
+tpFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+tpFrame.Visible = false
+tpFrame.Active = true
+tpFrame.Draggable = true
+Instance.new("UICorner", tpFrame).CornerRadius = UDim.new(0, 10)
+
+local tpLabel = Instance.new("TextLabel", tpFrame)
+tpLabel.Size = UDim2.new(1, 0, 0, 30)
+tpLabel.Position = UDim2.new(0, 0, 0, 0)
+tpLabel.BackgroundTransparency = 1
+tpLabel.Text = "Teleport to Player"
+tpLabel.Font = Enum.Font.Gotham
+tpLabel.TextSize = 16
+tpLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+local playerList = Instance.new("ScrollingFrame", tpFrame)
+playerList.Position = UDim2.new(0, 0, 0, 30)
+playerList.Size = UDim2.new(1, 0, 1, -30)
+playerList.CanvasSize = UDim2.new(0, 0, 0, 1000)
+playerList.ScrollBarThickness = 6
+playerList.BackgroundTransparency = 1
+
+local paddingTP = Instance.new("UIPadding", playerList)
+paddingTP.PaddingTop = UDim.new(0, 6)
+paddingTP.PaddingLeft = UDim.new(0, 6)
+paddingTP.PaddingRight = UDim.new(0, 6)
+paddingTP.PaddingBottom = UDim.new(0, 6)
+
+local layoutTemplate = Instance.new("UIListLayout")
+layoutTemplate.Padding = UDim.new(0, 6)
+layoutTemplate.SortOrder = Enum.SortOrder.LayoutOrder
+
+local function refreshPlayerList()
+	playerList:ClearAllChildren()
+	local layoutClone = layoutTemplate:Clone()
+	layoutClone.Parent = playerList
+
+	for _, player in pairs(Players:GetPlayers()) do
+		if player ~= LocalPlayer and player.Character then
+			local btn = Instance.new("TextButton")
+			btn.Size = UDim2.new(1, -20, 0, 26)
+			btn.TextXAlignment = Enum.TextXAlignment.Center
+			btn.Text = player.DisplayName
+			btn.Font = Enum.Font.Gotham
+			btn.TextSize = 14
+			btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+			btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+			btn.Parent = playerList
+			Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+
+			btn.MouseButton1Click:Connect(function()
+				local char = LocalPlayer.Character
+				local root = char and char:FindFirstChild("HumanoidRootPart")
+				local targetRoot = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+
+				if root and targetRoot then
+					root.CFrame = targetRoot.CFrame + Vector3.new(0, 5, 0)
+				end
+			end)
+		end
+	end
+end
+
+tpBtn.MouseButton1Click:Connect(function()
+	tpEnabled = not tpEnabled
+	tpBtn.Text = tpEnabled and "Teleport: ON" or "Teleport: OFF"
+	tpFrame.Visible = tpEnabled
+	if tpEnabled then
+		refreshPlayerList()
+	end
+end)
+
+Players.PlayerAdded:Connect(function()
+	if tpEnabled then refreshPlayerList() end
+end)
+
+Players.PlayerRemoving:Connect(function()
+	if tpEnabled then refreshPlayerList() end
+end)
+
+local autoPumpEnabled = false
+local extremePumpMode = false -- New variable for extreme mode
+local pumpSpeed = 0.1 -- Default speed for non-extreme mode
+local plotNumbers = {8} 
+
+local autoPumpBtn = createButton("Auto Pump: OFF")
+
+local pumpFrame = Instance.new("Frame", gui)
+pumpFrame.Size = UDim2.new(0, 200, 0, 180) -- Menyesuaikan tinggi frame
+pumpFrame.Position = UDim2.new(0.4, 0, 0.35, 0)
+pumpFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+pumpFrame.Visible = false
+pumpFrame.Active = true
+pumpFrame.Draggable = true
+Instance.new("UICorner", pumpFrame).CornerRadius = UDim.new(0, 10)
+
+local extremeModeToggle = Instance.new("TextButton", pumpFrame)
+extremeModeToggle.Size = UDim2.new(1, -20, 0, 30)
+extremeModeToggle.Position = UDim2.new(0, 10, 0, 10)
+extremeModeToggle.Text = "Extreme Mode: OFF"
+extremeModeToggle.Font = Enum.Font.Gotham
+extremeModeToggle.TextSize = 14
+extremeModeToggle.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+extremeModeToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+Instance.new("UICorner", extremeModeToggle).CornerRadius = UDim.new(0, 6)
+
+local pumpSpeedLabel = Instance.new("TextLabel", pumpFrame)
+pumpSpeedLabel.Size = UDim2.new(1, 0, 0, 25)
+pumpSpeedLabel.Position = UDim2.new(0, 0, 0, 45)
+pumpSpeedLabel.BackgroundTransparency = 1
+pumpSpeedLabel.Text = "Set Pump Speed (seconds):"
+pumpSpeedLabel.Font = Enum.Font.Gotham
+pumpSpeedLabel.TextSize = 14
+pumpSpeedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+local pumpInput = Instance.new("TextBox", pumpFrame)
+pumpInput.Size = UDim2.new(1, -20, 0, 30)
+pumpInput.Position = UDim2.new(0, 10, 0, 70)
+pumpInput.PlaceholderText = "detik, cth: 0.1"
+pumpInput.Text = tostring(pumpSpeed)
+pumpInput.Font = Enum.Font.Gotham
+pumpInput.TextSize = 14
+pumpInput.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+pumpInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+pumpInput.ClearTextOnFocus = false
+Instance.new("UICorner", pumpInput).CornerRadius = UDim.new(0, 6)
+
+local plotLabel = Instance.new("TextLabel", pumpFrame)
+plotLabel.Size = UDim2.new(1, 0, 0, 25)
+plotLabel.Position = UDim2.new(0, 0, 0, 105)
 plotLabel.BackgroundTransparency = 1
 plotLabel.Text = "Plot Numbers (e.g., 1, 8, 12):"
 plotLabel.Font = Enum.Font.Gotham
@@ -410,9 +824,9 @@ plotLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 
 local plotInput = Instance.new("TextBox", pumpFrame)
 plotInput.Size = UDim2.new(1, -20, 0, 30)
-plotInput.Position = UDim2.new(0, 10, 0, 85)
+plotInput.Position = UDim2.new(0, 10, 0, 130)
 plotInput.PlaceholderText = "cth: 1, 8, 12"
-plotInput.Text = table.concat(plotNumbers, ", ") -- Menampilkan daftar plot default
+plotInput.Text = table.concat(plotNumbers, ", ")
 plotInput.Font = Enum.Font.Gotham
 plotInput.TextSize = 14
 plotInput.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
@@ -420,10 +834,20 @@ plotInput.TextColor3 = Color3.fromRGB(255, 255, 255)
 plotInput.ClearTextOnFocus = false
 Instance.new("UICorner", plotInput).CornerRadius = UDim.new(0, 6)
 
+extremeModeToggle.MouseButton1Click:Connect(function()
+    extremePumpMode = not extremePumpMode
+    extremeModeToggle.Text = extremePumpMode and "Extreme Mode: ON" or "Extreme Mode: OFF"
+    pumpSpeedLabel.Visible = not extremePumpMode
+    pumpInput.Visible = not extremePumpMode
+end)
+
 autoPumpBtn.MouseButton1Click:Connect(function()
 	autoPumpEnabled = not autoPumpEnabled
 	autoPumpBtn.Text = autoPumpEnabled and "Auto Pump: ON" or "Auto Pump: OFF"
 	pumpFrame.Visible = autoPumpEnabled
+    -- Update visibility of speed controls based on extreme mode
+    pumpSpeedLabel.Visible = not extremePumpMode
+    pumpInput.Visible = not extremePumpMode
 end)
 
 pumpInput.FocusLost:Connect(function(enterPressed)
@@ -450,7 +874,7 @@ plotInput.FocusLost:Connect(function(enterPressed)
 		if #newPlotNumbers > 0 then
 			plotNumbers = newPlotNumbers
 		else
-			plotInput.Text = table.concat(plotNumbers, ", ") -- Kembalikan ke nilai sebelumnya jika input tidak valid
+			plotInput.Text = table.concat(plotNumbers, ", ")
 		end
 	end
 end)
@@ -467,7 +891,7 @@ coroutine.wrap(function()
                     end
                 end
             end)
-            if pumpSpeed > 0 then
+            if not extremePumpMode and pumpSpeed > 0 then -- Only wait if not in extreme mode and pumpSpeed > 0
                 task.wait(pumpSpeed)
             end
         end
