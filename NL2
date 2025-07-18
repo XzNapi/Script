@@ -1,0 +1,578 @@
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+local RS = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
+
+local gui = Instance.new("ScreenGui", LocalPlayer:WaitForChild("PlayerGui"))
+gui.Name = "NLightV1"
+gui.ResetOnSpawn = false
+
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0, 300, 0, 250)
+frame.Position = UDim2.new(0.05, 0, 0.2, 0)
+frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+frame.Active = true
+frame.Draggable = true
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 10)
+
+local titleBar = Instance.new("Frame", frame)
+titleBar.Size = UDim2.new(1, 0, 0, 30)
+titleBar.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+Instance.new("UICorner", titleBar).CornerRadius = UDim.new(0, 10)
+
+local title = Instance.new("TextLabel", titleBar)
+title.Text = "NLight | V.1"
+title.Font = Enum.Font.GothamSemibold
+title.TextSize = 16
+title.TextColor3 = Color3.fromRGB(255,255,255)
+title.BackgroundTransparency = 1
+title.Size = UDim2.new(1, -60, 1, 0)
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Position = UDim2.new(0, 10, 0, 0)
+
+local minimize = Instance.new("TextButton", titleBar)
+minimize.Text = "-"
+minimize.Font = Enum.Font.GothamBold
+minimize.TextSize = 18
+minimize.Size = UDim2.new(0, 30, 1, 0)
+minimize.Position = UDim2.new(1, -60, 0, 0)
+minimize.BackgroundTransparency = 1
+minimize.TextColor3 = Color3.fromRGB(255,255,255)
+
+local delete = Instance.new("TextButton", titleBar)
+delete.Text = "×"
+delete.Font = Enum.Font.GothamBold
+delete.TextSize = 18
+delete.Size = UDim2.new(0, 30, 1, 0)
+delete.Position = UDim2.new(1, -30, 0, 0)
+delete.BackgroundTransparency = 1
+delete.TextColor3 = Color3.fromRGB(255,100,100)
+
+local scroll = Instance.new("ScrollingFrame", frame)
+scroll.Position = UDim2.new(0, 0, 0, 30)
+scroll.Size = UDim2.new(1, 0, 1, -30)
+scroll.CanvasSize = UDim2.new(0, 0, 0, 1000)
+scroll.BackgroundTransparency = 1
+scroll.ScrollBarThickness = 6
+
+local layout = Instance.new("UIListLayout", scroll)
+layout.Padding = UDim.new(0, 10)
+layout.SortOrder = Enum.SortOrder.LayoutOrder
+
+local padding = Instance.new("UIPadding", scroll)
+padding.PaddingTop = UDim.new(0, 10)
+padding.PaddingLeft = UDim.new(0, 20)
+padding.PaddingRight = UDim.new(0, 20)
+
+local function createButton(text)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, 0, 0, 35)
+    btn.Text = text
+    btn.Font = Enum.Font.Gotham
+    btn.TextSize = 16
+    btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+    btn.Parent = scroll
+    return btn
+end
+
+-- NoClip
+local noclip = false
+local noclipBtn = createButton("NoClip: OFF")
+noclipBtn.MouseButton1Click:Connect(function()
+    noclip = not noclip
+    noclipBtn.Text = noclip and "NoClip: ON" or "NoClip: OFF"
+end)
+
+RS.Stepped:Connect(function()
+    if noclip and LocalPlayer.Character then
+        for _, v in pairs(LocalPlayer.Character:GetDescendants()) do
+            if v:IsA("BasePart") then v.CanCollide = false end
+        end
+    end
+end)
+
+-- Infinite Jump
+local infJump = false
+local infJumpBtn = createButton("Inf Jump: OFF")
+infJumpBtn.MouseButton1Click:Connect(function()
+    infJump = not infJump
+    infJumpBtn.Text = infJump and "Inf Jump: ON" or "Inf Jump: OFF"
+end)
+
+UIS.JumpRequest:Connect(function()
+    if infJump and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+        LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState(Enum.HumanoidStateType.Jumping)
+    end
+end)
+
+-- Speed
+local speedEnabled = false
+local speedAmount = 50
+
+local speedBtn = createButton("Speed: OFF")
+
+local speedFrame = Instance.new("Frame", gui)
+speedFrame.Size = UDim2.new(0, 150, 0, 70)
+speedFrame.Position = UDim2.new(0.4, 0, 0.2, 0)
+speedFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+speedFrame.Visible = false
+speedFrame.Active = true
+speedFrame.Draggable = true
+Instance.new("UICorner", speedFrame).CornerRadius = UDim.new(0, 10)
+
+local speedLabel = Instance.new("TextLabel", speedFrame)
+speedLabel.Size = UDim2.new(1, 0, 0, 25)
+speedLabel.Position = UDim2.new(0, 0, 0, 0)
+speedLabel.BackgroundTransparency = 1
+speedLabel.Text = "Set Speed:"
+speedLabel.Font = Enum.Font.Gotham
+speedLabel.TextSize = 14
+speedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+local speedInput = Instance.new("TextBox", speedFrame)
+speedInput.Size = UDim2.new(1, -20, 0, 30)
+speedInput.Position = UDim2.new(0, 10, 0, 30)
+speedInput.PlaceholderText = "contoh: 50"
+speedInput.Text = tostring(speedAmount)
+speedInput.Font = Enum.Font.Gotham
+speedInput.TextSize = 14
+speedInput.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+speedInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+speedInput.ClearTextOnFocus = false
+Instance.new("UICorner", speedInput).CornerRadius = UDim.new(0, 6)
+
+speedBtn.MouseButton1Click:Connect(function()
+	speedEnabled = not speedEnabled
+	speedBtn.Text = speedEnabled and "Speed: ON" or "Speed: OFF"
+	speedFrame.Visible = speedEnabled
+end)
+
+speedInput.FocusLost:Connect(function(enterPressed)
+	if enterPressed then
+		local val = tonumber(speedInput.Text)
+		if val and val > 0 and val <= 100000 then
+			speedAmount = val
+		else
+			speedInput.Text = tostring(speedAmount)
+		end
+	end
+end)
+
+RS.RenderStepped:Connect(function()
+	if speedEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+		LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = speedAmount
+	end
+end)
+
+-- Anti-AFK
+local antiAFK = false
+local afkBtn = createButton("Anti-AFK: OFF")
+afkBtn.MouseButton1Click:Connect(function()
+    antiAFK = not antiAFK
+    afkBtn.Text = antiAFK and "Anti-AFK: ON" or "Anti-AFK: OFF"
+    if antiAFK then
+        pcall(function()
+            for _, conn in pairs(getconnections(LocalPlayer.Idled)) do
+                conn:Disable()
+            end
+        end)
+    end
+end)
+
+-- ESP
+local espEnabled = false
+local espBtn = createButton("ESP: OFF")
+local espObjects = {}
+
+local function clearESP()
+    for _, obj in pairs(espObjects) do
+        if obj.NameTag then obj.NameTag:Destroy() end
+        if obj.Box then obj.Box:Destroy() end
+    end
+    espObjects = {}
+end
+
+local function createESP(target)
+    if target == LocalPlayer then return end
+    local char = target.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+    local hrp = char.HumanoidRootPart
+
+    local tag = Instance.new("BillboardGui")  
+    tag.Name = "ESP_NameTag"  
+    tag.Size = UDim2.new(0, 150, 0, 30)  
+    tag.StudsOffset = Vector3.new(0, 3, 0)  
+    tag.AlwaysOnTop = true  
+    tag.Adornee = hrp  
+    tag.LightInfluence = 0  
+    tag.MaxDistance = 10000  
+    tag.Parent = hrp  
+
+    local label = Instance.new("TextLabel", tag)  
+    label.Size = UDim2.new(1, 0, 1, 0)  
+    label.BackgroundTransparency = 0.25  
+    label.BackgroundColor3 = Color3.fromRGB(0, 0, 0)  
+    label.TextColor3 = Color3.fromRGB(0, 255, 127)  
+    label.TextStrokeTransparency = 0.5  
+    label.Text = target.DisplayName  
+    label.Font = Enum.Font.GothamBold  
+    label.TextScaled = true  
+    Instance.new("UICorner", label).CornerRadius = UDim.new(0, 4)  
+
+    local box = Instance.new("BoxHandleAdornment")  
+    box.Name = "ESP_Box"  
+    box.Size = Vector3.new(4, 6, 2)  
+    box.AlwaysOnTop = true  
+    box.ZIndex = 5  
+    box.Color3 = Color3.fromRGB(0, 255, 127)  
+    box.Transparency = 0.7  
+    box.Adornee = hrp  
+    box.Parent = hrp  
+
+    espObjects[target] = {NameTag = tag, Box = box}
+end
+
+espBtn.MouseButton1Click:Connect(function()
+    espEnabled = not espEnabled
+    espBtn.Text = espEnabled and "ESP: ON" or "ESP: OFF"
+    if espEnabled then
+        clearESP()
+        for _, p in pairs(Players:GetPlayers()) do
+            createESP(p)
+        end
+    else
+        clearESP()
+    end
+end)
+
+-- Aimbot
+local aimEnabled = false
+local aimBtn = createButton("Aimbot: OFF")
+aimBtn.MouseButton1Click:Connect(function()
+    aimEnabled = not aimEnabled
+    aimBtn.Text = aimEnabled and "Aimbot: ON" or "Aimbot: OFF"
+end)
+
+local function getClosest()
+    local maxDist = math.huge
+    local closest = nil
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("Head") and p.Character:FindFirstChildOfClass("Humanoid") and p.Character.Humanoid.Health > 0 then
+            local pos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(p.Character.Head.Position)
+            if onScreen then
+                local dist = (Vector2.new(pos.X, pos.Y) - UIS:GetMouseLocation()).Magnitude
+                if dist < maxDist then
+                    maxDist = dist
+                    closest = p
+                end
+            end
+        end
+    end
+    return closest
+end
+
+RS.RenderStepped:Connect(function()
+    if aimEnabled and UIS:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
+        local closest = getClosest()
+        if closest and closest.Character and closest.Character:FindFirstChild("Head") then
+            workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, closest.Character.Head.Position)
+        end
+    end
+end)
+
+-- Teleport to Player
+local tpEnabled = false
+local tpBtn = createButton("Teleport: OFF")
+
+local tpFrame = Instance.new("Frame", gui)
+tpFrame.Size = UDim2.new(0, 200, 0, 180)
+tpFrame.Position = UDim2.new(0.4, 220, 0.2, 0)
+tpFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+tpFrame.Visible = false
+tpFrame.Active = true
+tpFrame.Draggable = true
+Instance.new("UICorner", tpFrame).CornerRadius = UDim.new(0, 10)
+
+local tpLabel = Instance.new("TextLabel", tpFrame)
+tpLabel.Size = UDim2.new(1, 0, 0, 30)
+tpLabel.Position = UDim2.new(0, 0, 0, 0)
+tpLabel.BackgroundTransparency = 1
+tpLabel.Text = "Teleport to Player"
+tpLabel.Font = Enum.Font.Gotham
+tpLabel.TextSize = 16
+tpLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+local playerList = Instance.new("ScrollingFrame", tpFrame)
+playerList.Position = UDim2.new(0, 0, 0, 30)
+playerList.Size = UDim2.new(1, 0, 1, -30)
+playerList.CanvasSize = UDim2.new(0, 0, 0, 1000)
+playerList.ScrollBarThickness = 6
+playerList.BackgroundTransparency = 1
+
+local paddingTP = Instance.new("UIPadding", playerList)
+paddingTP.PaddingTop = UDim.new(0, 6)
+paddingTP.PaddingLeft = UDim.new(0, 6)
+paddingTP.PaddingRight = UDim.new(0, 6)
+paddingTP.PaddingBottom = UDim.new(0, 6)
+
+local layoutTemplate = Instance.new("UIListLayout")
+layoutTemplate.Padding = UDim.new(0, 6)
+layoutTemplate.SortOrder = Enum.SortOrder.LayoutOrder
+
+local function refreshPlayerList()
+	playerList:ClearAllChildren()
+	local layoutClone = layoutTemplate:Clone()
+	layoutClone.Parent = playerList
+
+	for _, player in pairs(Players:GetPlayers()) do
+		if player ~= LocalPlayer and player.Character then
+			local btn = Instance.new("TextButton")
+			btn.Size = UDim2.new(1, -20, 0, 26)
+			btn.TextXAlignment = Enum.TextXAlignment.Center
+			btn.Text = player.DisplayName
+			btn.Font = Enum.Font.Gotham
+			btn.TextSize = 14
+			btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+			btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+			btn.Parent = playerList
+			Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+
+			btn.MouseButton1Click:Connect(function()
+				local char = LocalPlayer.Character
+				local root = char and char:FindFirstChild("HumanoidRootPart")
+				local targetRoot = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+
+				if root and targetRoot then
+					root.CFrame = targetRoot.CFrame + Vector3.new(0, 5, 0)
+				end
+			end)
+		end
+	end
+end
+
+tpBtn.MouseButton1Click:Connect(function()
+	tpEnabled = not tpEnabled
+	tpBtn.Text = tpEnabled and "Teleport: ON" or "Teleport: OFF"
+	tpFrame.Visible = tpEnabled
+	if tpEnabled then
+		refreshPlayerList()
+	end
+end)
+
+Players.PlayerAdded:Connect(function()
+	if tpEnabled then refreshPlayerList() end
+end)
+
+Players.PlayerRemoving:Connect(function()
+	if tpEnabled then refreshPlayerList() end
+end)
+
+-- =================================================================
+-- START: Waypoint Teleport (TAMPILAN DIPERBAIKI)
+-- =================================================================
+local waypointEnabled = false
+local waypoints = {}
+local waypointSlots = {}
+local currentSlotIndex = nil
+
+local waypointBtn = createButton("Waypoint TP: OFF")
+
+-- Frame Utama Waypoint
+local waypointFrame = Instance.new("Frame", gui)
+waypointFrame.Size = UDim2.new(0, 250, 0, 280)
+waypointFrame.Position = UDim2.new(0.6, 0, 0.2, 0)
+waypointFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+waypointFrame.Visible = false
+waypointFrame.Active = true
+waypointFrame.Draggable = true
+Instance.new("UICorner", waypointFrame).CornerRadius = UDim.new(0, 10)
+
+local waypointTitle = Instance.new("TextLabel", waypointFrame)
+waypointTitle.Size = UDim2.new(1, 0, 0, 30)
+waypointTitle.Text = "Waypoint Teleport"
+waypointTitle.Font = Enum.Font.Gotham
+waypointTitle.TextSize = 16
+waypointTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+waypointTitle.BackgroundTransparency = 1
+waypointTitle.Position = UDim2.new(0, 0, 0, 5)
+waypointTitle.TextXAlignment = Enum.TextXAlignment.Center
+
+local waypointSlotContainer = Instance.new("ScrollingFrame", waypointFrame)
+waypointSlotContainer.Size = UDim2.new(1, -20, 1, -40)
+waypointSlotContainer.Position = UDim2.new(0, 10, 0, 35)
+waypointSlotContainer.BackgroundTransparency = 1
+waypointSlotContainer.CanvasSize = UDim2.new(0, 0, 2, 0)
+waypointSlotContainer.ScrollBarThickness = 4
+local waypointLayout = Instance.new("UIGridLayout", waypointSlotContainer)
+waypointLayout.CellSize = UDim2.new(0, 100, 0, 35)
+waypointLayout.CellPadding = UDim2.new(0, 10, 0, 10)
+waypointLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+-- Frame untuk Menyimpan Waypoint Baru (TAMPILAN DIPERBAIKI)
+local saveFrame = Instance.new("Frame", gui)
+saveFrame.Size = UDim2.new(0, 220, 0, 150)
+saveFrame.AnchorPoint = Vector2.new(0.5, 0.5) -- Pusat
+saveFrame.Position = UDim2.new(0.5, 0, 0.5, 0) -- Tengah layar
+saveFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+saveFrame.Visible = false
+saveFrame.Active = true
+saveFrame.Draggable = true
+Instance.new("UICorner", saveFrame).CornerRadius = UDim.new(0, 10)
+local saveListLayout = Instance.new("UIListLayout", saveFrame)
+saveListLayout.Padding = UDim.new(0, 10)
+saveListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+local savePadding = Instance.new("UIPadding", saveFrame)
+savePadding.PaddingTop = UDim.new(0, 10)
+savePadding.PaddingBottom = UDim.new(0, 10)
+
+local saveTitle = Instance.new("TextLabel", saveFrame)
+saveTitle.Size = UDim2.new(1, -20, 0, 25)
+saveTitle.Text = "Simpan Lokasi Baru"
+saveTitle.Font = Enum.Font.GothamBold
+saveTitle.TextSize = 16
+saveTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+saveTitle.BackgroundTransparency = 1
+
+local nameInput = Instance.new("TextBox", saveFrame)
+nameInput.Size = UDim2.new(1, -20, 0, 35)
+nameInput.PlaceholderText = "Nama lokasi..."
+nameInput.Font = Enum.Font.Gotham
+nameInput.TextSize = 14
+nameInput.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+nameInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+Instance.new("UICorner", nameInput).CornerRadius = UDim.new(0, 6)
+
+local buttonContainerSave = Instance.new("Frame", saveFrame)
+buttonContainerSave.BackgroundTransparency = 1
+buttonContainerSave.Size = UDim2.new(1, -20, 0, 35)
+local buttonLayoutSave = Instance.new("UIListLayout", buttonContainerSave)
+buttonLayoutSave.FillDirection = Enum.FillDirection.Horizontal
+buttonLayoutSave.Padding = UDim.new(0, 10)
+
+local saveCoordBtn = Instance.new("TextButton", buttonContainerSave)
+saveCoordBtn.Size = UDim2.new(0.5, -5, 1, 0)
+saveCoordBtn.Text = "Simpan"
+saveCoordBtn.Font = Enum.Font.GothamBold
+saveCoordBtn.BackgroundColor3 = Color3.fromRGB(80, 160, 80)
+saveCoordBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+Instance.new("UICorner", saveCoordBtn).CornerRadius = UDim.new(0, 6)
+
+local backBtnSave = Instance.new("TextButton", buttonContainerSave)
+backBtnSave.Size = UDim2.new(0.5, -5, 1, 0)
+backBtnSave.Text = "Kembali"
+backBtnSave.Font = Enum.Font.Gotham
+backBtnSave.BackgroundColor3 = Color3.fromRGB(90, 90, 90)
+backBtnSave.TextColor3 = Color3.fromRGB(255, 255, 255)
+Instance.new("UICorner", backBtnSave).CornerRadius = UDim.new(0, 6)
+
+
+-- Frame untuk Menggunakan/Menghapus Waypoint (TAMPILAN DIPERBAIKI)
+local useFrame = Instance.new("Frame", gui)
+useFrame.Size = UDim2.new(0, 180, 0, 160)
+useFrame.AnchorPoint = Vector2.new(0.5, 0.5) -- Pusat
+useFrame.Position = UDim2.new(0.5, 0, 0.5, 0) -- Tengah layar
+useFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+useFrame.Visible = false
+useFrame.Active = true
+useFrame.Draggable = true
+Instance.new("UICorner", useFrame).CornerRadius = UDim.new(0, 10)
+local useListLayout = Instance.new("UIListLayout", useFrame)
+useListLayout.Padding = UDim.new(0, 8)
+useListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+local usePadding = Instance.new("UIPadding", useFrame)
+usePadding.PaddingTop = UDim.new(0, 10)
+usePadding.PaddingLeft = UDim.new(0, 10)
+usePadding.PaddingRight = UDim.new(0, 10)
+usePadding.PaddingBottom = UDim.new(0, 10)
+
+local useTitle = Instance.new("TextLabel", useFrame)
+useTitle.Size = UDim2.new(1, 0, 0, 25)
+useTitle.Text = "Opsi Waypoint"
+useTitle.Font = Enum.Font.GothamBold
+useTitle.TextSize = 16
+useTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+useTitle.BackgroundTransparency = 1
+
+local teleportToBtn = Instance.new("TextButton", useFrame)
+teleportToBtn.Size = UDim2.new(1, 0, 0, 30)
+teleportToBtn.Text = "Teleport ke Lokasi"
+teleportToBtn.Font = Enum.Font.GothamBold
+teleportToBtn.BackgroundColor3 = Color3.fromRGB(80, 120, 180)
+teleportToBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+Instance.new("UICorner", teleportToBtn).CornerRadius = UDim.new(0, 6)
+
+local deleteWpBtn = Instance.new("TextButton", useFrame)
+deleteWpBtn.Size = UDim2.new(1, 0, 0, 30)
+deleteWpBtn.Text = "Hapus Lokasi"
+deleteWpBtn.Font = Enum.Font.Gotham
+deleteWpBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 80)
+deleteWpBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+Instance.new("UICorner", deleteWpBtn).CornerRadius = UDim.new(0, 6)
+
+local backBtnUse = Instance.new("TextButton", useFrame)
+backBtnUse.Size = UDim2.new(1, 0, 0, 30)
+backBtnUse.Text = "Kembali"
+backBtnUse.Font = Enum.Font.Gotham
+backBtnUse.BackgroundColor3 = Color3.fromRGB(90, 90, 90)
+backBtnUse.TextColor3 = Color3.fromRGB(255, 255, 255)
+Instance.new("UICorner", backBtnUse).CornerRadius = UDim.new(0, 6)
+
+
+-- Fungsi untuk me-refresh tampilan slot
+local function refreshWaypointSlots()
+	for i = 1, 10 do
+		local slotBtn = waypointSlots[i]
+		if waypoints[i] then
+			slotBtn.Text = waypoints[i].name
+			slotBtn.BackgroundColor3 = Color3.fromRGB(80, 160, 80)
+		else
+			slotBtn.Text = "Slot " .. i
+			slotBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+		end
+	end
+end
+
+-- Membuat 10 tombol slot
+for i = 1, 10 do
+	local slotBtn = Instance.new("TextButton")
+	slotBtn.Parent = waypointSlotContainer
+	slotBtn.Name = "Slot_"..i
+	slotBtn.Font = Enum.Font.Gotham
+	slotBtn.TextSize = 14
+	slotBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	Instance.new("UICorner", slotBtn).CornerRadius = UDim.new(0, 6)
+	table.insert(waypointSlots, slotBtn)
+
+	slotBtn.MouseButton1Click:Connect(function()
+		currentSlotIndex = i
+		if waypoints[i] then
+			useTitle.Text = waypoints[i].name
+			useFrame.Visible = true
+		else
+			nameInput.Text = ""
+			saveFrame.Visible = true
+		end
+	end)
+end
+refreshWaypointSlots() -- Panggil sekali untuk set warna awal
+
+-- Logika tombol utama Waypoint
+waypointBtn.MouseButton1Click:Connect(function()
+	waypointEnabled = not waypointEnabled
+	waypointBtn.Text = waypointEnabled and "Waypoint TP: ON" or "Waypoint TP: OFF"
+	waypointFrame.Visible = waypointEnabled
+	if waypointEnabled then
+		refreshWaypointSlots()
+	else
+		saveFrame.Visible = false
+		useFrame.Visible = false
+	end
+end)
+
+-- Logika frame Simpan
+saveCoordBtn.MouseButton1Click:Connect(function()
+	local char = LocalPlayer.Character
+	local 
