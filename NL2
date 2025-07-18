@@ -575,4 +575,217 @@ end)
 -- Logika frame Simpan
 saveCoordBtn.MouseButton1Click:Connect(function()
 	local char = LocalPlayer.Character
-	local 
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if not root or not currentSlotIndex then return end
+
+	waypoints[currentSlotIndex] = {
+		name = nameInput.Text ~= "" and nameInput.Text or "Waypoint "..currentSlotIndex,
+		location = root.CFrame
+	}
+	saveFrame.Visible = false
+	refreshWaypointSlots()
+end)
+
+backBtnSave.MouseButton1Click:Connect(function()
+	saveFrame.Visible = false
+end)
+
+-- Logika frame Gunakan/Hapus
+teleportToBtn.MouseButton1Click:Connect(function()
+	local char = LocalPlayer.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if not root or not currentSlotIndex or not waypoints[currentSlotIndex] then return end
+	
+	root.CFrame = waypoints[currentSlotIndex].location
+	useFrame.Visible = false
+end)
+
+deleteWpBtn.MouseButton1Click:Connect(function()
+	if not currentSlotIndex then return end
+	waypoints[currentSlotIndex] = nil
+	useFrame.Visible = false
+	refreshWaypointSlots()
+end)
+
+backBtnUse.MouseButton1Click:Connect(function()
+    useFrame.Visible = false
+end)
+-- =================================================================
+-- END: Waypoint Teleport
+-- =================================================================
+
+
+-- Auto Pump
+local autoPumpEnabled = false
+local extremePumpMode = false
+local pumpSpeed = 0.1
+local plotNumbers = {8} 
+
+local autoPumpBtn = createButton("Auto Pump: OFF")
+
+local pumpFrame = Instance.new("Frame", gui)
+pumpFrame.Size = UDim2.new(0, 200, 0, 180)
+pumpFrame.Position = UDim2.new(0.4, 0, 0.35, 0)
+pumpFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+pumpFrame.Visible = false
+pumpFrame.Active = true
+pumpFrame.Draggable = true
+Instance.new("UICorner", pumpFrame).CornerRadius = UDim.new(0, 10)
+
+local extremeModeToggle = Instance.new("TextButton", pumpFrame)
+extremeModeToggle.Size = UDim2.new(1, -20, 0, 30)
+extremeModeToggle.Position = UDim2.new(0, 10, 0, 10)
+extremeModeToggle.Text = "Extreme Mode: OFF"
+extremeModeToggle.Font = Enum.Font.Gotham
+extremeModeToggle.TextSize = 14
+extremeModeToggle.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+extremeModeToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+Instance.new("UICorner", extremeModeToggle).CornerRadius = UDim.new(0, 6)
+
+local pumpSpeedLabel = Instance.new("TextLabel", pumpFrame)
+pumpSpeedLabel.Size = UDim2.new(1, 0, 0, 25)
+pumpSpeedLabel.Position = UDim2.new(0, 0, 0, 45)
+pumpSpeedLabel.BackgroundTransparency = 1
+pumpSpeedLabel.Text = "Set Pump Speed (seconds):"
+pumpSpeedLabel.Font = Enum.Font.Gotham
+pumpSpeedLabel.TextSize = 14
+pumpSpeedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+local pumpInput = Instance.new("TextBox", pumpFrame)
+pumpInput.Size = UDim2.new(1, -20, 0, 30)
+pumpInput.Position = UDim2.new(0, 10, 0, 70)
+pumpInput.PlaceholderText = "detik, cth: 0.1"
+pumpInput.Text = tostring(pumpSpeed)
+pumpInput.Font = Enum.Font.Gotham
+pumpInput.TextSize = 14
+pumpInput.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+pumpInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+pumpInput.ClearTextOnFocus = false
+Instance.new("UICorner", pumpInput).CornerRadius = UDim.new(0, 6)
+
+local plotLabel = Instance.new("TextLabel", pumpFrame)
+plotLabel.Size = UDim2.new(1, 0, 0, 25)
+plotLabel.Position = UDim2.new(0, 0, 0, 105)
+plotLabel.BackgroundTransparency = 1
+plotLabel.Text = "Plot Numbers (e.g., 1, 8, 12):"
+plotLabel.Font = Enum.Font.Gotham
+plotLabel.TextSize = 14
+plotLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+local plotInput = Instance.new("TextBox", pumpFrame)
+plotInput.Size = UDim2.new(1, -20, 0, 30)
+plotInput.Position = UDim2.new(0, 10, 0, 130)
+plotInput.PlaceholderText = "cth: 1, 8, 12"
+plotInput.Text = table.concat(plotNumbers, ", ")
+plotInput.Font = Enum.Font.Gotham
+plotInput.TextSize = 14
+plotInput.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+plotInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+plotInput.ClearTextOnFocus = false
+Instance.new("UICorner", plotInput).CornerRadius = UDim.new(0, 6)
+
+extremeModeToggle.MouseButton1Click:Connect(function()
+    extremePumpMode = not extremePumpMode
+    extremeModeToggle.Text = extremePumpMode and "Extreme Mode: ON" or "Extreme Mode: OFF"
+    pumpSpeedLabel.Visible = not extremePumpMode
+    pumpInput.Visible = not extremePumpMode
+end)
+
+autoPumpBtn.MouseButton1Click:Connect(function()
+	autoPumpEnabled = not autoPumpEnabled
+	autoPumpBtn.Text = autoPumpEnabled and "Auto Pump: ON" or "Auto Pump: OFF"
+	pumpFrame.Visible = autoPumpEnabled
+    if autoPumpEnabled then
+        pumpSpeedLabel.Visible = not extremePumpMode
+        pumpInput.Visible = not extremePumpMode
+    end
+end)
+
+pumpInput.FocusLost:Connect(function(enterPressed)
+	if enterPressed then
+		local val = tonumber(pumpInput.Text)
+		if val and val >= 0 then
+			pumpSpeed = val
+		else
+			pumpInput.Text = tostring(pumpSpeed)
+		end
+	end
+end)
+
+plotInput.FocusLost:Connect(function(enterPressed)
+	if enterPressed then
+		local inputText = plotInput.Text
+		local newPlotNumbers = {}
+		for num_str in string.gmatch(inputText, "[%d]+") do
+			local num = tonumber(num_str)
+			if num and num > 0 then
+				table.insert(newPlotNumbers, num)
+			end
+		end
+		if #newPlotNumbers > 0 then
+			plotNumbers = newPlotNumbers
+		else
+			plotInput.Text = table.concat(plotNumbers, ", ")
+		end
+	end
+end)
+
+coroutine.wrap(function()
+    while task.wait() do
+        if autoPumpEnabled then
+            pcall(function()
+                for _, plotNum in ipairs(plotNumbers) do
+                    local plot = workspace.Gameplay.Plots:FindFirstChild(tostring(plotNum))
+                    if plot then
+                        local args = {[1] = plot}
+                        game:GetService("ReplicatedStorage").Events.Gameplay.ClickFoodPump:FireServer(unpack(args))
+                    end
+                end
+            end)
+            if not extremePumpMode and pumpSpeed > 0 then
+                task.wait(pumpSpeed)
+            end
+        end
+    end
+end)()
+
+-- GUI Management (Minimize, Open, Delete)
+local minimizedBtn = Instance.new("TextButton", gui)
+minimizedBtn.Size = UDim2.new(0, 120, 0, 30)
+minimizedBtn.Position = UDim2.new(0, 10, 0, 10)
+minimizedBtn.Text = "Open NLight"
+minimizedBtn.Font = Enum.Font.GothamBold
+minimizedBtn.TextSize = 14
+minimizedBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+minimizedBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+minimizedBtn.Visible = false
+minimizedBtn.Active = true
+minimizedBtn.Draggable = true
+Instance.new("UICorner", minimizedBtn).CornerRadius = UDim.new(0, 10)
+
+minimize.MouseButton1Click:Connect(function()
+	frame.Visible = false
+	minimizedBtn.Visible = true
+	if tpFrame then tpFrame.Visible = false end
+	if speedFrame then speedFrame.Visible = false end
+	if pumpFrame then pumpFrame.Visible = false end
+	if waypointFrame then 
+        waypointFrame.Visible = false 
+        saveFrame.Visible = false
+        useFrame.Visible = false
+    end
+end)
+
+minimizedBtn.MouseButton1Click:Connect(function()
+	frame.Visible = true
+	minimizedBtn.Visible = false
+	if tpEnabled and tpFrame then tpFrame.Visible = true end
+	if speedEnabled and speedFrame then speedFrame.Visible = true end
+	if autoPumpEnabled and pumpFrame then pumpFrame.Visible = true end
+	if waypointEnabled and waypointFrame then waypointFrame.Visible = true end
+end)
+
+delete.MouseButton1Click:Connect(function()
+    autoPumpEnabled = false 
+    gui:Destroy()
+end)
