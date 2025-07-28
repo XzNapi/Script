@@ -616,11 +616,19 @@ coroutine.wrap(function()
 end)()
 
 -- 10. Script Spy FIX + Logika Aktif
-local spyEnabled = false
-local vaultLogs = {}
-local MAX_LOG = 50
+-- ==============================================================
+--  GUI Script Spy Lengkap
+-- ==============================================================
+
+-- Variabel global
+local spyEnabled   = false
+local vaultLogs    = {}
+local MAX_LOG      = 50
 local selectedText = nil
 
+-- ----------------------------------------------------------
+--  Fungsi utilitas
+-- ----------------------------------------------------------
 local function serialize(args)
     local t = {}
     for _, v in ipairs(args) do
@@ -638,7 +646,9 @@ local function serialize(args)
     return table.concat(t, ", ")
 end
 
--- GUI Spy
+-- ----------------------------------------------------------
+--  Frame utama
+-- ----------------------------------------------------------
 local spyFrame = Instance.new("Frame")
 spyFrame.Size = UDim2.new(0, 550, 0, 320)
 spyFrame.Position = UDim2.new(0.5, -275, 0.5, -160)
@@ -659,6 +669,7 @@ spyTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
 spyTitle.BackgroundTransparency = 1
 spyTitle.Parent = spyFrame
 
+-- Minimize
 local spyMinBtn = Instance.new("TextButton")
 spyMinBtn.Size = UDim2.new(0, 25, 0, 25)
 spyMinBtn.Position = UDim2.new(1, -30, 0, 2)
@@ -670,6 +681,7 @@ spyMinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 Instance.new("UICorner", spyMinBtn).CornerRadius = UDim.new(0, 6)
 spyMinBtn.Parent = spyFrame
 
+-- Float button
 local spyFloat = Instance.new("TextButton")
 spyFloat.Size = UDim2.new(0, 100, 0, 25)
 spyFloat.Position = UDim2.new(1, -110, 1, -30)
@@ -684,7 +696,7 @@ spyFloat.Draggable = true
 Instance.new("UICorner", spyFloat).CornerRadius = UDim.new(0, 8)
 spyFloat.Parent = gui
 
--- Layout
+-- Layout utama
 local main = Instance.new("Frame")
 main.Size = UDim2.new(1, -20, 1, -70)
 main.Position = UDim2.new(0, 10, 0, 35)
@@ -696,7 +708,7 @@ split.FillDirection = Enum.FillDirection.Horizontal
 split.Padding = UDim.new(0, 10)
 split.Parent = main
 
--- Left
+-- Left panel – Live viewer
 local left = Instance.new("Frame")
 left.Size = UDim2.new(0.6, 0, 1, 0)
 left.BackgroundTransparency = 1
@@ -721,6 +733,7 @@ liveLabel.TextYAlignment = Enum.TextYAlignment.Top
 liveLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 liveLabel.Parent = liveScroll
 
+-- Button bar
 local btnBar = Instance.new("Frame")
 btnBar.Size = UDim2.new(1, 0, 0, 30)
 btnBar.Position = UDim2.new(0, 0, 1, -30)
@@ -752,7 +765,7 @@ clearBtn.Text = "Clear"
 clearBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 80)
 clearBtn.Parent = btnBar
 
--- Right
+-- Right panel – Vault
 local right = Instance.new("Frame")
 right.Size = UDim2.new(0.4, 0, 1, 0)
 right.BackgroundTransparency = 1
@@ -769,7 +782,9 @@ local vaultLayout = Instance.new("UIListLayout")
 vaultLayout.Padding = UDim.new(0, 2)
 vaultLayout.Parent = vaultScroll
 
--- Refresh
+-- ----------------------------------------------------------
+--  Refresh vault
+-- ----------------------------------------------------------
 local function refreshVault()
     for _, v in ipairs(vaultScroll:GetChildren()) do
         if v:IsA("TextButton") then v:Destroy() end
@@ -793,28 +808,36 @@ local function refreshVault()
     vaultLayout:ApplyLayout()
 end
 
--- Passive scan LogService
-local lastMsgId = 0
-RS.Heartbeat:Connect(function()
-    if not spyEnabled then return end
-    for _, msg in ipairs(LogService:GetLogHistory()) do
-        if msg.messageId > lastMsgId then
-            lastMsgId = msg.messageId
-            local txt = msg.message
-            if txt:match("FireServer") or txt:match("InvokeServer") then
-                local line = txt:gsub("^%s*FireServer", "FireServer"):gsub("^%s*InvokeServer", "InvokeServer")
-                table.insert(vaultLogs, {
-                    title = txt:match("FireServer") and "FireServer" or "InvokeServer",
-                    line = line
-                })
-                if #vaultLogs > MAX_LOG then table.remove(vaultLogs, 1) end
-                refreshVault()
-            end
-        end
+-- ----------------------------------------------------------
+--  Hook aktif
+-- ----------------------------------------------------------
+local oldFireServer
+oldFireServer = hookfunction(Instance.new("RemoteEvent").FireServer, newcclosure(function(self, ...)
+    if spyEnabled then
+        local args = {...}
+        local line = string.format('game:GetService("ReplicatedStorage")["%s"]:FireServer(%s)', self.Name, serialize(args))
+        table.insert(vaultLogs, {title = self.Name .. " (FireServer)", line = line})
+        if #vaultLogs > MAX_LOG then table.remove(vaultLogs, 1) end
+        refreshVault()
     end
-end)
+    return oldFireServer(self, ...)
+end))
 
--- Tombol utilitas
+local oldInvokeServer
+oldInvokeServer = hookfunction(Instance.new("RemoteFunction").InvokeServer, newcclosure(function(self, ...)
+    if spyEnabled then
+        local args = {...}
+        local line = string.format('game:GetService("ReplicatedStorage")["%s"]:InvokeServer(%s)', self.Name, serialize(args))
+        table.insert(vaultLogs, {title = self.Name .. " (InvokeServer)", line = line})
+        if #vaultLogs > MAX_LOG then table.remove(vaultLogs, 1) end
+        refreshVault()
+    end
+    return oldInvokeServer(self, ...)
+end))
+
+-- ----------------------------------------------------------
+--  Utilitas clipboard & exec
+-- ----------------------------------------------------------
 local function toClip(str)
     if setclipboard then setclipboard(str)
     elseif syn and syn.write_clipboard then syn.write_clipboard(str)
@@ -838,7 +861,9 @@ clearBtn.MouseButton1Click:Connect(function()
     liveLabel.Text = "-- klik log di kanan --"
 end)
 
--- Tambahkan tombol ke menu utama
+-- ----------------------------------------------------------
+--  Tambahkan tombol ke menu utama
+-- ----------------------------------------------------------
 local spyBtn = createButton("Script Spy: OFF")
 spyBtn.MouseButton1Click:Connect(function()
     spyEnabled = not spyEnabled
