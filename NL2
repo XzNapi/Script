@@ -755,15 +755,15 @@ local vaultLayout = Instance.new("UIListLayout", vaultScroll)
 vaultLayout.Padding = UDim.new(0, 2)
 
 -- ==============================================================
--- Script Spy – anti-freeze (vault-only, throttled, limited)
+-- SCRIPT SPY – MANUAL (tidak hook, tidak freeze)
 -- ==============================================================
 
 local spyEnabled   = false
-local vaultLogs    = {}   -- {title, line}
+local vaultLogs    = {}
 local MAX_LOG      = 50
-local lastPush     = 0    -- throttle tick
 local selectedText = nil
 
+-- serialize
 local function serialize(args)
     local t = {}
     for _, v in ipairs(args) do
@@ -779,7 +779,7 @@ local function serialize(args)
     return table.concat(t, ", ")
 end
 
--- render tombol log (vault)
+-- render tombol log
 local function refreshVault()
     for _, v in ipairs(vaultScroll:GetChildren()) do
         if v:IsA("TextButton") then v:Destroy() end
@@ -794,38 +794,31 @@ local function refreshVault()
         btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
         Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
         btn.Parent = vaultScroll
+
+        btn.MouseButton1Click:Connect(function()
+            liveLabel.Text = data.line
+            liveScroll.CanvasSize = UDim2.new(0, 0, 0, liveLabel.AbsoluteSize.Y + 10)
+            selectedText = data.line
+        end)
     end
     vaultLayout:ApplyLayout()
 end
 
--- push ke vault (throttled)
-local function pushVault(method, remote, ...)
+-- scan manual
+local function manualScan()
     if not spyEnabled then return end
-    local now = tick()
-    if now - lastPush < 0.1 then return end -- jeda 0,1 detik
-    lastPush = now
-
-    local line  = string.format('game:GetService("ReplicatedStorage")["%s"]:%s(%s)', remote.Name, method, serialize({...}))
-    local title = remote.Name .. " (" .. method .. ")"
-    table.insert(vaultLogs, {title = title, line = line})
-    if #vaultLogs > MAX_LOG then table.remove(vaultLogs, 1) end
+    vaultLogs = {}
+    for _, r in ipairs(game:GetService("ReplicatedStorage"):GetDescendants()) do
+        if r:IsA("RemoteEvent") then
+            table.insert(vaultLogs, {title = r.Name .. " (FireServer)", line = '-- contoh: game:GetService("ReplicatedStorage")["'..r.Name..'"]:FireServer(...)'})
+        elseif r:IsA("RemoteFunction") then
+            table.insert(vaultLogs, {title = r.Name .. " (InvokeServer)", line = '-- contoh: game:GetService("ReplicatedStorage")["'..r.Name..'"]:InvokeServer(...)'})
+        end
+    end
     refreshVault()
 end
 
--- hook remote (cepat tetapi jeda di pushVault)
-local mt = getrawmetatable(game)
-local oldNamecall = mt.__namecall
-setreadonly(mt, false)
-mt.__namecall = newcclosure(function(self, ...)
-    local method = getnamecallmethod()
-    if method == "FireServer" or method == "InvokeServer" then
-        pushVault(method, self, ...)
-    end
-    return oldNamecall(self, ...)
-end)
-setreadonly(mt, true)
-
--- toggle tombol
+-- toggle
 local spyBtn = createButton("Script Spy: OFF")
 spyBtn.MouseButton1Click:Connect(function()
     spyEnabled = not spyEnabled
@@ -834,20 +827,25 @@ spyBtn.MouseButton1Click:Connect(function()
     spyFloat.Visible = false
 end)
 
--- minimize / restore
-spyMinBtn.MouseButton1Click:Connect(function()
-    spyFrame.Visible = false
-    spyFloat.Visible = true
-end)
-spyFloat.MouseButton1Click:Connect(function()
-    spyFrame.Visible = true
-    spyFloat.Visible = false
-end)
+-- tombol refresh
+local refreshBtn = Instance.new("TextButton", right)
+refreshBtn.Size = UDim2.new(1, 0, 0, 25)
+refreshBtn.Position = UDim2.new(0, 0, 1, -25)
+refreshBtn.Text = "Refresh Log"
+refreshBtn.Font = Enum.Font.GothamBold
+refreshBtn.TextSize = 12
+refreshBtn.BackgroundColor3 = Color3.fromRGB(80, 160, 80)
+refreshBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+Instance.new("UICorner", refreshBtn).CornerRadius = UDim.new(0, 6)
+refreshBtn.Parent = right
 
--- clear semua log
+refreshBtn.MouseButton1Click:Connect(manualScan)
+
+-- clear
 clearBtn.MouseButton1Click:Connect(function()
     vaultLogs = {}
     refreshVault()
+    liveLabel.Text = "-- klik log di kanan --"
 end)
 
 -- copy / exec
@@ -857,13 +855,11 @@ local function toClip(str)
     else warn("Clipboard tidak tersedia") end
 end
 copyBtn.MouseButton1Click:Connect(function()
-    if liveLabel.Text ~= "-- klik log di kanan --" then
-        toClip(liveLabel.Text)
-    end
+    if selectedText then toClip(selectedText) end
 end)
 execBtn.MouseButton1Click:Connect(function()
-    if liveLabel.Text ~= "-- klik log di kanan --" then
-        local fn, err = loadstring(liveLabel.Text)
+    if selectedText then
+        local fn, err = loadstring(selectedText)
         if fn then fn() else warn("Exec gagal: "..err) end
     end
 end)
