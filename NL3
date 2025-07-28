@@ -795,19 +795,35 @@ coroutine.wrap(function()
 end)()
 
 ------------------------------------------------------------------
--- 3.  CROSS-PLATFORM SCRIPT SPY  (refactored)
+-- 3.  SPY SCRIPT GUI
 ------------------------------------------------------------------
 local Players = game:GetService("Players")
 local UIS     = game:GetService("UserInputService")
-local Tween   = game:GetService("TweenService")
-local Http    = game:GetService("HttpService")
+local CoreGui = game:GetService("CoreGui")
 
-local gui     = script.Parent.Parent -- pastikan mengarah ke NLightV1
+-- Pastikan GUI utama sudah jalan
+local gui = Players.LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("NLightV1")
+while not gui do task.wait() gui = Players.LocalPlayer.PlayerGui:FindFirstChild("NLightV1") end
 
 ------------------------------------------------------------------
---  Floating & Main Frame
+-- 1. Frame Utama
 ------------------------------------------------------------------
-local spyFloat = gui:FindFirstChild("SpyFloat") or Instance.new("TextButton")
+local spyFrame = Instance.new("Frame")
+spyFrame.Name = "ScriptSpyFrame"
+spyFrame.Size = UDim2.new(0, 550, 0, 320)
+spyFrame.Position = UDim2.new(0.5, -275, 0.5, -160)
+spyFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+spyFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+spyFrame.Visible = false
+spyFrame.Active = true
+spyFrame.Draggable = true
+Instance.new("UICorner", spyFrame).CornerRadius = UDim.new(0, 10)
+spyFrame.Parent = gui
+
+------------------------------------------------------------------
+-- 2. Tombol Float
+------------------------------------------------------------------
+local spyFloat = Instance.new("TextButton")
 spyFloat.Name = "SpyFloat"
 spyFloat.Size = UDim2.new(0, 100, 0, 26)
 spyFloat.Position = UDim2.new(1, -110, 1, -30)
@@ -816,33 +832,17 @@ spyFloat.Text = "📄 Spy"
 spyFloat.Font = Enum.Font.GothamBold
 spyFloat.TextSize = 12
 spyFloat.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-spyFloat.BackgroundTransparency = 0.1
 spyFloat.TextColor3 = Color3.fromRGB(255, 255, 255)
 spyFloat.Active = true
-spyFloat.Visible = true
 Instance.new("UICorner", spyFloat).CornerRadius = UDim.new(0, 6)
 spyFloat.Parent = gui
 
-local spyFrame = gui:FindFirstChild("ScriptSpyFrame") or Instance.new("Frame")
-spyFrame.Name = "ScriptSpyFrame"
-spyFrame.Size = UDim2.new(0, 550, 0, 320)
-spyFrame.Position = UDim2.new(0.5, -275, 0.5, -160)
-spyFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-spyFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-spyFrame.Visible = false
-spyFrame.Active = true
-spyFrame.Selectable = true
-Instance.new("UICorner", spyFrame).CornerRadius = UDim.new(0, 10)
-spyFrame.Parent = gui
-
 ------------------------------------------------------------------
--- Title bar (drag handle)
+-- 3. Title Bar (close button)
 ------------------------------------------------------------------
 local titleBar = Instance.new("Frame")
-titleBar.Name = "TitleBar"
 titleBar.Size = UDim2.new(1, 0, 0, 30)
 titleBar.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-titleBar.BorderSizePixel = 0
 Instance.new("UICorner", titleBar).CornerRadius = UDim.new(0, 10)
 titleBar.Parent = spyFrame
 
@@ -869,46 +869,9 @@ Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 6)
 closeBtn.Parent = titleBar
 
 ------------------------------------------------------------------
--- Drag logic (touch & mouse)
-------------------------------------------------------------------
-local dragging, dragInput, dragStartPos, startPos
-
-local function update(input)
-    local delta = input.Position - dragStartPos
-    spyFrame.Position = UDim2.new(
-        startPos.X.Scale,
-        startPos.X.Offset + delta.X,
-        startPos.Y.Scale,
-        startPos.Y.Offset + delta.Y
-    )
-end
-
-titleBar.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or
-       input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
-        dragStartPos = input.Position
-        startPos = spyFrame.Position
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
-            end
-        end)
-    end
-end)
-
-UIS.InputChanged:Connect(function(input)
-    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or
-                     input.UserInputType == Enum.UserInputType.Touch) then
-        update(input)
-    end
-end)
-
-------------------------------------------------------------------
--- Layout utama (split horizontal)
+-- 4. Konten (live view + vault) – versi mini
 ------------------------------------------------------------------
 local main = Instance.new("Frame")
-main.Name = "Main"
 main.Size = UDim2.new(1, -20, 1, -40)
 main.Position = UDim2.new(0, 10, 0, 35)
 main.BackgroundTransparency = 1
@@ -919,18 +882,14 @@ split.FillDirection = Enum.FillDirection.Horizontal
 split.Padding = UDim.new(0, 10)
 split.Parent = main
 
-------------------------------------------------------------------
--- Left: Live view
-------------------------------------------------------------------
+-- Left panel
 local left = Instance.new("Frame")
-left.Name = "Left"
 left.Size = UDim2.new(0.6, 0, 1, 0)
 left.BackgroundTransparency = 1
 left.Parent = main
 
 local liveScroll = Instance.new("ScrollingFrame")
-liveScroll.Name = "LiveScroll"
-liveScroll.Size = UDim2.new(1, 0, 1, -35)
+liveScroll.Size = UDim2.new(1, 0, 1, 0)
 liveScroll.BackgroundTransparency = 1
 liveScroll.ScrollBarThickness = 6
 liveScroll.CanvasSize = UDim2.new(0, 0, 0, 1000)
@@ -948,46 +907,14 @@ liveLabel.TextYAlignment = Enum.TextYAlignment.Top
 liveLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 liveLabel.Parent = liveScroll
 
-local btnBar = Instance.new("Frame")
-btnBar.Size = UDim2.new(1, 0, 0, 30)
-btnBar.Position = UDim2.new(0, 0, 1, -30)
-btnBar.BackgroundTransparency = 1
-btnBar.Parent = left
-
-local btnLay = Instance.new("UIListLayout")
-btnLay.FillDirection = Enum.FillDirection.Horizontal
-btnLay.Padding = UDim.new(0, 6)
-btnLay.Parent = btnBar
-
-local function createBtn(text, color)
-    local b = Instance.new("TextButton")
-    b.Size = UDim2.new(0.25, -4, 1, 0)
-    b.Text = text
-    b.Font = Enum.Font.GothamBold
-    b.TextSize = 13
-    b.BackgroundColor3 = color
-    b.TextColor3 = Color3.fromRGB(255, 255, 255)
-    Instance.new("UICorner", b).CornerRadius = UDim.new(0, 6)
-    b.Parent = btnBar
-    return b
-end
-
-local copyBtn   = createBtn("Copy",   Color3.fromRGB(80, 120, 255))
-local execBtn   = createBtn("Exec",   Color3.fromRGB(80, 180, 80))
-local clearBtn  = createBtn("Clear",  Color3.fromRGB(180, 80, 80))
-local refreshBtn= createBtn("Refresh",Color3.fromRGB(100,180,100))
-
-------------------------------------------------------------------
--- Right: Vault list
-------------------------------------------------------------------
+-- Right panel
 local right = Instance.new("Frame")
-right.Name = "Right"
 right.Size = UDim2.new(0.4, 0, 1, 0)
 right.BackgroundTransparency = 1
 right.Parent = main
 
 local vaultScroll = Instance.new("ScrollingFrame")
-vaultScroll.Size = UDim2.new(1, 0, 1, -35)
+vaultScroll.Size = UDim2.new(1, 0, 1, 0)
 vaultScroll.BackgroundTransparency = 1
 vaultScroll.ScrollBarThickness = 6
 vaultScroll.CanvasSize = UDim2.new(0, 0, 0, 1000)
@@ -998,20 +925,10 @@ vaultLayout.Padding = UDim.new(0, 2)
 vaultLayout.Parent = vaultScroll
 
 ------------------------------------------------------------------
--- Utility
+-- 5. Refresh & fungsi tombol
 ------------------------------------------------------------------
 local selectedText = ""
-local function toClip(str)
-    if setclipboard then
-        setclipboard(str)
-    elseif syn and syn.write_clipboard then
-        syn.write_clipboard(str)
-    else
-        warn("Clipboard not supported")
-    end
-end
-
-local function refreshSourcePanel()
+local function refreshVault()
     for _, v in ipairs(vaultScroll:GetChildren()) do
         if v:IsA("TextButton") then v:Destroy() end
     end
@@ -1028,61 +945,46 @@ local function refreshSourcePanel()
         btn.MouseButton1Click:Connect(function()
             selectedText = src
             liveLabel.Text = src
-            liveScroll.CanvasSize = UDim2.new(0, liveLabel.TextBounds.X, 0, liveLabel.TextBounds.Y + 10)
+            liveScroll.CanvasSize = UDim2.new(0, 0, 0, liveLabel.TextBounds.Y + 10)
         end)
     end
-    vaultLayout:ApplyLayout()
 end
 
-copyBtn.MouseButton1Click:Connect(function()
-    if selectedText ~= "" then toClip(selectedText) end
-end)
-
-execBtn.MouseButton1Click:Connect(function()
-    if selectedText ~= "" then
-        local fn, err = loadstring(selectedText)
-        if fn then
-            fn()
-        else
-            warn("Exec failed: " .. err)
-        end
-    end
-end)
-
-clearBtn.MouseButton1Click:Connect(function()
-    captured = {}
-    refreshSourcePanel()
-    liveLabel.Text = "-- pilih script di kanan --"
-end)
-
-refreshBtn.MouseButton1Click:Connect(refreshSourcePanel)
-
-------------------------------------------------------------------
--- Toggle visibility
-------------------------------------------------------------------
-local function toggleSpy()
-    spyFrame.Visible = not spyFrame.Visible
-    spyFloat.Visible = not spyFrame.Visible
-end
-
-spyFloat.MouseButton1Click:Connect(toggleSpy)
-closeBtn.MouseButton1Click:Connect(toggleSpy)
-
-UIS.InputBegan:Connect(function(input, gpe)
-    if gpe then return end
-    if input.KeyCode == Enum.KeyCode.RightShift then
-        toggleSpy()
-    end
-end)
-
-------------------------------------------------------------------
--- Auto refresh setiap 1 detik
-------------------------------------------------------------------
 task.spawn(function()
-    while task.wait(1) do
-        refreshSourcePanel()
+    while task.wait(1) do refreshVault() end
+end)
+
+------------------------------------------------------------------
+-- 6. Toggle
+------------------------------------------------------------------
+local function toggle()
+    spyFrame.Visible = not spyFrame.Visible
+end
+spyFloat.MouseButton1Click:Connect(toggle)
+closeBtn.MouseButton1Click:Connect(toggle)
+UIS.InputBegan:Connect(function(inp, gpe)
+    if gpe then return end
+    if inp.KeyCode == Enum.KeyCode.RightShift then toggle() end
+end)
+
+------------------------------------------------------------------
+-- Toggle Script Spy (ON / OFF) - Mobile friendly
+------------------------------------------------------------------
+local spyToggleEnabled = false
+local spyToggleBtn = createButton("Script Spy: OFF")
+spyToggleBtn.MouseButton1Click:Connect(function()
+    spyToggleEnabled = not spyToggleEnabled
+    spyToggleBtn.Text = spyToggleEnabled and "Script Spy: ON" or "Script Spy: OFF"
+    -- Tampilkan / sembunyikan frame + float button
+    if spyFrame then
+        spyFrame.Visible = spyToggleEnabled
+    end
+    if spyFloat then
+        spyFloat.Visible = spyToggleEnabled
     end
 end)
+
+
 
 -- GUI Management (Minimize, Open, Delete)
 local minimizedBtn = Instance.new("TextButton", gui)
