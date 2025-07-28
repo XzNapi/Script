@@ -615,22 +615,21 @@ end)
 -- =================================================================
 
 -- ==============================================================
--- START: Script Spy (Remote Logger + Log Vault + UI)
+-- Script Spy (GUI + Logic) – full drop-in
 -- ==============================================================
 
-local HttpService = game:GetService("HttpService")
-local RunService  = game:GetService("RunService")
+-- ambil service
+local Players = game:GetService("Players")
+local RS      = game:GetService("RunService")
+local UIS     = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
 
--- state
-local spyEnabled      = false
-local spyLogEntries   = {}   -- array {text = "...", ts = tick()}
-local logVault        = {}   -- simpan log untuk dipakai lagi
-local selectedLogIdx  = nil
+local gui = Instance.new("ScreenGui", LocalPlayer:WaitForChild("PlayerGui"))
+gui.Name = "NLightV1"
+gui.ResetOnSpawn = false
 
--- tombol utama
-local spyBtn = createButton("Script Spy: OFF")
-
--- main frame
+-- frame utama
 local spyFrame = Instance.new("Frame")
 spyFrame.Name = "SpyFrame"
 spyFrame.Size = UDim2.new(0, 550, 0, 320)
@@ -640,9 +639,8 @@ spyFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 spyFrame.Visible = false
 spyFrame.Active = true
 spyFrame.Draggable = true
-spyFrame.Parent = gui
-spyFrame.Visible = spyEnabled
 Instance.new("UICorner", spyFrame).CornerRadius = UDim.new(0, 10)
+spyFrame.Parent = gui
 
 local spyTitle = Instance.new("TextLabel")
 spyTitle.Size = UDim2.new(1, 0, 0, 30)
@@ -653,7 +651,48 @@ spyTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
 spyTitle.BackgroundTransparency = 1
 spyTitle.Parent = spyFrame
 
--- kontainer utama (kiri = log, kanan = vault)
+-- Tombol minimize khusus Script Spy
+local spyMinBtn = Instance.new("TextButton")
+spyMinBtn.Name = "SpyMinBtn"
+spyMinBtn.Size = UDim2.new(0, 25, 0, 25)
+spyMinBtn.Position = UDim2.new(1, -30, 0, 2)
+spyMinBtn.Text = "—"
+spyMinBtn.Font = Enum.Font.GothamBold
+spyMinBtn.TextSize = 14
+spyMinBtn.BackgroundTransparency = 0.3
+spyMinBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+spyMinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+Instance.new("UICorner", spyMinBtn).CornerRadius = UDim.new(0, 6)
+spyMinBtn.Parent = spyFrame
+
+-- logika minimize khusus
+local spyMinimized = false
+local spyMinBtnFloat = Instance.new("TextButton")
+spyMinBtnFloat.Name = "SpyMinFloat"
+spyMinBtnFloat.Size = UDim2.new(0, 100, 0, 25)
+spyMinBtnFloat.Position = UDim2.new(1, -110, 1, -30)
+spyMinBtnFloat.Text = "Open Spy"
+spyMinBtnFloat.Font = Enum.Font.Gotham
+spyMinBtnFloat.TextSize = 12
+spyMinBtnFloat.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+spyMinBtnFloat.TextColor3 = Color3.fromRGB(255, 255, 255)
+spyMinBtnFloat.Visible = false
+spyMinBtnFloat.Active = true
+spyMinBtnFloat.Draggable = true
+Instance.new("UICorner", spyMinBtnFloat).CornerRadius = UDim.new(0, 8)
+spyMinBtnFloat.Parent = gui
+
+spyMinBtn.MouseButton1Click:Connect(function()
+    spyFrame.Visible = false
+    spyMinBtnFloat.Visible = true
+end)
+
+spyMinBtnFloat.MouseButton1Click:Connect(function()
+    spyFrame.Visible = true
+    spyMinBtnFloat.Visible = false
+end)
+
+-- kontainer utama split
 local mainHolder = Instance.new("Frame")
 mainHolder.Size = UDim2.new(1, -20, 1, -70)
 mainHolder.Position = UDim2.new(0, 10, 0, 35)
@@ -664,7 +703,7 @@ local splitLayout = Instance.new("UIListLayout", mainHolder)
 splitLayout.FillDirection = Enum.FillDirection.Horizontal
 splitLayout.Padding = UDim.new(0, 10)
 
--- >>>>>>>>> LEFT: output spy
+-- >>>>>>> KIRI: live log
 local leftFrame = Instance.new("Frame")
 leftFrame.Size = UDim2.new(0.6, 0, 1, 0)
 leftFrame.BackgroundTransparency = 1
@@ -680,14 +719,13 @@ spyScroll.Parent = leftFrame
 
 local spyLayout = Instance.new("UIListLayout", spyScroll)
 spyLayout.Padding = UDim.new(0, 2)
-spyLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
 local spyPadding = Instance.new("UIPadding", spyScroll)
 spyPadding.PaddingTop = UDim.new(0, 4)
 spyPadding.PaddingLeft = UDim.new(0, 4)
 spyPadding.PaddingRight = UDim.new(0, 4)
 
--- tombol bawah kiri (Copy, Exec, Clear)
+-- tombol bar kiri
 local btnBar = Instance.new("Frame")
 btnBar.Size = UDim2.new(1, 0, 0, 30)
 btnBar.Position = UDim2.new(0, 0, 1, -30)
@@ -718,7 +756,7 @@ clearBtn.Text = "Clear"
 clearBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 80)
 clearBtn.Parent = btnBar
 
--- >>>>>>>>> RIGHT: vault list
+-- >>>>>>> KANAN: vault
 local rightFrame = Instance.new("Frame")
 rightFrame.Size = UDim2.new(0.4, 0, 1, 0)
 rightFrame.BackgroundTransparency = 1
@@ -749,7 +787,6 @@ vaultTitle.TextColor3 = Color3.fromRGB(180, 180, 180)
 vaultTitle.BackgroundTransparency = 1
 vaultTitle.Parent = rightFrame
 
--- tombol bawah kanan (Save & Load)
 local vaultBtnBar = Instance.new("Frame")
 vaultBtnBar.Size = UDim2.new(1, 0, 0, 30)
 vaultBtnBar.Position = UDim2.new(0, 0, 1, -30)
@@ -770,16 +807,22 @@ saveVaultBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 Instance.new("UICorner", saveVaultBtn).CornerRadius = UDim.new(0, 6)
 saveVaultBtn.Parent = vaultBtnBar
 
--- utilitas
+-- state
+local spyEnabled = false
+local spyLogEntries = {}
+local logVault = {}
+local selectedText = nil
+
+-- util
 local function serializeArgs(args)
     local t = {}
     for _, v in ipairs(args) do
         local typ = typeof(v)
         if typ == "Instance" then
-            table.insert(t, 'game:GetService("'..v:GetFullName()..'")')
+            table.insert(t, 'game:FindFirstChild("'..v:GetFullName()..'", true)')
         elseif typ == "string" then
             table.insert(t, '"'..v:gsub('"', '\\"')..'"')
-        elseif typ == "CFrame" or typ == "Vector3" or typ == "UDim2" then
+        elseif typ == "CFrame" or typ == "Vector3" then
             table.insert(t, "CFrame.new"..tostring(v))
         else
             table.insert(t, tostring(v))
@@ -788,118 +831,122 @@ local function serializeArgs(args)
     return table.concat(t, ", ")
 end
 
-local function addLog(remoteType, remote, args)
-    if not spyEnabled then return end
-    local line = string.format('game:GetService("ReplicatedStorage")["%s"]:%s(%s)',
-                               remote.Name,
-                               remoteType,
-                               serializeArgs(args))
-    table.insert(spyLogEntries, {text = line, ts = tick()})
-    -- tambahkan ke spyScroll
+local function addSpyLine(line)
+    table.insert(spyLogEntries, line)
     local label = Instance.new("TextLabel")
     label.Size = UDim2.new(1, 0, 0, 18)
     label.BackgroundTransparency = 1
     label.Text = line
     label.Font = Enum.Font.Code
-    label.TextSize = 12
+    label.TextSize = 11
     label.TextXAlignment = Enum.TextXAlignment.Left
-    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.TextColor3 = Color3.fromRGB(255,255,255)
     label.TextTruncate = Enum.TextTruncate.AtEnd
     label.Parent = spyScroll
     spyLayout:ApplyLayout()
-    spyScroll.CanvasSize = UDim2.new(0, 0, 0, spyLayout.AbsoluteContentSize.Y + 10)
+    spyScroll.CanvasSize = UDim2.new(0,0,0, spyLayout.AbsoluteContentSize.Y + 10)
+
+    label.InputBegan:Connect(function(inp)
+        if inp.UserInputType == Enum.UserInputType.MouseButton1 then
+            selectedText = line
+            for _, v in ipairs(spyScroll:GetChildren()) do
+                if v:IsA("TextLabel") then v.BackgroundTransparency = 1 end
+            end
+            label.BackgroundTransparency = 0.5
+            label.BackgroundColor3 = Color3.fromRGB(60,60,60)
+        end
+    end)
 end
 
--- hook
+-- hooks
 local oldFire = hookfunction(Instance.new("RemoteEvent").FireServer, newcclosure(function(self, ...)
-    addLog("FireServer", self, {...})
+    if spyEnabled then
+        local line = string.format('game:GetService("ReplicatedStorage")["%s"]:FireServer(%s)', self.Name, serializeArgs({...}))
+        addSpyLine(line)
+    end
     return oldFire(self, ...)
 end))
 
 local oldInvoke = hookfunction(Instance.new("RemoteFunction").InvokeServer, newcclosure(function(self, ...)
-    addLog("InvokeServer", self, {...})
+    if spyEnabled then
+        local line = string.format('game:GetService("ReplicatedStorage")["%s"]:InvokeServer(%s)', self.Name, serializeArgs({...}))
+        addSpyLine(line)
+    end
     return oldInvoke(self, ...)
 end))
 
--- tombol toggle
+-- tombol toggle (pastikan sudah ada di daftar createButton)
+local spyBtn = createButton("Script Spy: OFF")
 spyBtn.MouseButton1Click:Connect(function()
     spyEnabled = not spyEnabled
     spyBtn.Text = spyEnabled and "Script Spy: ON" or "Script Spy: OFF"
     spyFrame.Visible = spyEnabled
 end)
 
--- clear log
+-- tombol clear
 clearBtn.MouseButton1Click:Connect(function()
     for _, v in ipairs(spyScroll:GetChildren()) do
         if v:IsA("TextLabel") then v:Destroy() end
     end
     spyLogEntries = {}
-    spyScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+    spyScroll.CanvasSize = UDim2.new(0,0,0,0)
 end)
 
--- copy / exec
-local function getClipboard()
-    if setclipboard then return setclipboard end
-    if syn and syn.write_clipboard then return syn.write_clipboard end
-    return nil
+-- copy & exec
+local function toClipboard(str)
+    if setclipboard then setclipboard(str)
+    elseif syn and syn.write_clipboard then syn.write_clipboard(str)
+    else warn("Clipboard tidak tersedia") end
 end
 
 copyBtn.MouseButton1Click:Connect(function()
-    if #spyLogEntries == 0 then return end
-    local last = spyLogEntries[#spyLogEntries].text
-    local clip = getClipboard()
-    if clip then clip(last) end
+    if selectedText then toClipboard(selectedText) end
 end)
 
 execBtn.MouseButton1Click:Connect(function()
-    if #spyLogEntries == 0 then return end
-    local last = spyLogEntries[#spyLogEntries].text
-    local fn, err = loadstring(last)
-    if fn then fn() else warn(err) end
+    if selectedText then
+        local fn, err = loadstring(selectedText)
+        if fn then fn() else warn("Exec gagal: "..err) end
+    end
 end)
 
--- vault: save semua log ke vault
-saveVaultBtn.MouseButton1Click:Connect(function()
-    if #spyLogEntries == 0 then return end
-    for _, entry in ipairs(spyLogEntries) do
-        table.insert(logVault, entry.text)
-    end
-    -- refresh vault UI
+-- vault save & refresh
+local function refreshVault()
     for _, v in ipairs(vaultScroll:GetChildren()) do
         if v:IsA("TextLabel") then v:Destroy() end
     end
     for idx, txt in ipairs(logVault) do
-        local vLabel = Instance.new("TextLabel")
-        vLabel.Size = UDim2.new(1, 0, 0, 18)
-        vLabel.BackgroundTransparency = 1
-        vLabel.Text = idx .. ") " .. txt:sub(1, 45) .. "..."
-        vLabel.Font = Enum.Font.Code
-        vLabel.TextSize = 11
-        vLabel.TextXAlignment = Enum.TextXAlignment.Left
-        vLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-        vLabel.Parent = vaultScroll
-        -- klik untuk load ke spyScroll
-        vLabel.InputBegan:Connect(function(inp)
+        local vLbl = Instance.new("TextLabel")
+        vLbl.Size = UDim2.new(1, 0, 0, 18)
+        vLbl.BackgroundTransparency = 1
+        vLbl.Text = idx..") "..txt:sub(1,45).."..."
+        vLbl.Font = Enum.Font.Code
+        vLbl.TextSize = 10
+        vLbl.TextXAlignment = Enum.TextXAlignment.Left
+        vLbl.TextColor3 = Color3.fromRGB(200,200,200)
+        vLbl.Parent = vaultScroll
+        vLbl.InputBegan:Connect(function(inp)
             if inp.UserInputType == Enum.UserInputType.MouseButton1 then
-                addLog("Manual", {Name = "Vault"}, {txt})
+                addSpyLine(txt)
+                selectedText = txt
             end
         end)
     end
     vaultLayout:ApplyLayout()
-    vaultScroll.CanvasSize = UDim2.new(0, 0, 0, vaultLayout.AbsoluteContentSize.Y + 10)
+    vaultScroll.CanvasSize = UDim2.new(0,0,0, vaultLayout.AbsoluteContentSize.Y + 10)
+end
+
+saveVaultBtn.MouseButton1Click:Connect(function()
+    for _, txt in ipairs(spyLogEntries) do
+        table.insert(logVault, txt)
+    end
+    refreshVault()
 end)
 
 -- integrasi minimize / restore
-minimize.MouseButton1Click:Connect(function()
-    spyFrame.Visible = false
-end)
-
-minimizedBtn.MouseButton1Click:Connect(function()
-    if spyEnabled then spyFrame.Visible = true end
-end)
-
+-- sudah otomatis karena spyFrame.Parent = gui
 -- ==============================================================
--- END: Script Spy
+-- Script Spy selesai
 -- ==============================================================
 
 
