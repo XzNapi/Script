@@ -858,22 +858,52 @@ local function addSpyLine(line)
     end)
 end
 
--- hooks
-local oldFire = hookfunction(Instance.new("RemoteEvent").FireServer, newcclosure(function(self, ...)
-    if spyEnabled then
-        local line = string.format('game:GetService("ReplicatedStorage")["%s"]:FireServer(%s)', self.Name, serializeArgs({...}))
-        addSpyLine(line)
-    end
-    return oldFire(self, ...)
-end))
+-- Script Spy tanpa hookfunction – pakai __namecall metatable
 
-local oldInvoke = hookfunction(Instance.new("RemoteFunction").InvokeServer, newcclosure(function(self, ...)
-    if spyEnabled then
-        local line = string.format('game:GetService("ReplicatedStorage")["%s"]:InvokeServer(%s)', self.Name, serializeArgs({...}))
-        addSpyLine(line)
+local RealRemoteEvent   = Instance.new("RemoteEvent").FireServer
+local RealRemoteFunc    = Instance.new("RemoteFunction").InvokeServer
+local selectedText      = nil
+
+local function serializeArgs(args)
+    local t = {}
+    for _, v in ipairs(args) do
+        local typ = typeof(v)
+        if typ == "Instance" then
+            t[#t+1] = 'game:FindFirstChild("'..v:GetFullName()..'", true)'
+        elseif typ == "string" then
+            t[#t+1] = '"'..v:gsub('"', '\\"')..'"'
+        elseif typ == "CFrame" or typ == "Vector3" then
+            t[#t+1] = "CFrame.new"..tostring(v)
+        else
+            t[#t+1] = tostring(v)
+        end
     end
-    return oldInvoke(self, ...)
-end))
+    return table.concat(t, ", ")
+end
+
+local function addLog(remoteType, remote, ...)
+    if not spyEnabled then return end
+    local line = string.format('game:GetService("ReplicatedStorage")["%s"]:%s(%s)',
+                               remote.Name, remoteType, serializeArgs({...}))
+    addSpyLine(line)
+end
+
+-- hook __namecall
+local mt = getrawmetatable(game)
+local oldNamecall = mt.__namecall
+setreadonly(mt, false)
+
+mt.__namecall = newcclosure(function(self, ...)
+    local method = getnamecallmethod()
+    if method == "FireServer" then
+        addLog("FireServer", self, ...)
+    elseif method == "InvokeServer" then
+        addLog("InvokeServer", self, ...)
+    end
+    return oldNamecall(self, ...)
+end)
+
+setreadonly(mt, true)
 
 -- tombol toggle (pastikan sudah ada di daftar createButton)
 local spyBtn = createButton("Script Spy: OFF")
