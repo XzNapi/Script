@@ -1,5 +1,5 @@
 -- ==============================================================
---  NLight V.1 – Full Fixed Script
+--  NLight V.1  +  FULL Script-Spy Module  (LENGKAP)
 -- ==============================================================
 
 local Players       = game:GetService("Players")
@@ -7,30 +7,56 @@ local UIS           = game:GetService("UserInputService")
 local RS            = game:GetService("RunService")
 local LogService    = game:GetService("LogService")
 local TweenService  = game:GetService("TweenService")
+local HS            = game:GetService("HttpService")
+local VirtualUser   = game:GetService("VirtualUser")
 
 local LocalPlayer   = Players.LocalPlayer
 local Mouse         = LocalPlayer:GetMouse()
 
--- ----------------------------------------------------------
---  GUI utama
--- ----------------------------------------------------------
+------------------------------------------------------------------
+-- 1.  GUI UTAMA
+------------------------------------------------------------------
 local gui = Instance.new("ScreenGui")
 gui.Name = "NLightV1"
 gui.ResetOnSpawn = false
 gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
--- ----------------------------------------------------------
---  FRAME UTAMA
--- ----------------------------------------------------------
+-- Dragify helper
+local function dragify(obj)
+    local dragging, dragInput, startPos, startMouse
+    obj.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            startPos = obj.Position
+            startMouse = input.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then dragging = false end
+            end)
+        end
+    end)
+    obj.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement then dragInput = input end
+    end)
+    UIS.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - startMouse
+            obj.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X,
+                                     startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+end
+
+-- Frame utama
 local frame = Instance.new("Frame")
 frame.Size = UDim2.new(0, 300, 0, 250)
 frame.Position = UDim2.new(0.05, 0, 0.2, 0)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 frame.Active = true
-frame.Draggable = true
+dragify(frame)
 Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 10)
 frame.Parent = gui
 
+-- Title bar
 local titleBar = Instance.new("Frame")
 titleBar.Size = UDim2.new(1, 0, 0, 30)
 titleBar.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
@@ -43,7 +69,7 @@ title.Position = UDim2.new(0, 10, 0, 0)
 title.Text = "NLight | V.1"
 title.Font = Enum.Font.GothamSemibold
 title.TextSize = 16
-title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.TextColor3 = Color3.white
 title.BackgroundTransparency = 1
 title.TextXAlignment = Enum.TextXAlignment.Left
 title.Parent = titleBar
@@ -55,7 +81,7 @@ minimize.Text = "-"
 minimize.Font = Enum.Font.GothamBold
 minimize.TextSize = 18
 minimize.BackgroundTransparency = 1
-minimize.TextColor3 = Color3.fromRGB(255, 255, 255)
+minimize.TextColor3 = Color3.white
 minimize.Parent = titleBar
 
 local delete = Instance.new("TextButton")
@@ -68,6 +94,7 @@ delete.BackgroundTransparency = 1
 delete.TextColor3 = Color3.fromRGB(255, 100, 100)
 delete.Parent = titleBar
 
+-- Scroll utama
 local scroll = Instance.new("ScrollingFrame")
 scroll.Size = UDim2.new(1, 0, 1, -30)
 scroll.Position = UDim2.new(0, 0, 0, 30)
@@ -87,9 +114,7 @@ padding.PaddingLeft = UDim.new(0, 20)
 padding.PaddingRight = UDim.new(0, 20)
 padding.Parent = scroll
 
--- ----------------------------------------------------------
---  Helper createButton
--- ----------------------------------------------------------
+-- Helper createButton
 local function createButton(text)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, 0, 0, 35)
@@ -97,47 +122,51 @@ local function createButton(text)
     btn.Font = Enum.Font.Gotham
     btn.TextSize = 16
     btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.TextColor3 = Color3.white
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
     btn.Parent = scroll
     return btn
 end
 
--- =========================================================
---  FITUR
--- =========================================================
+------------------------------------------------------------------
+-- 2.  FITUR NLight
+------------------------------------------------------------------
 
--- 1. NoClip
+-- 2.1 NoClip
 local noclip = false
 local noclipBtn = createButton("NoClip: OFF")
 noclipBtn.MouseButton1Click:Connect(function()
     noclip = not noclip
     noclipBtn.Text = noclip and "NoClip: ON" or "NoClip: OFF"
 end)
-
+local function setNoclip(char, state)
+    for _, v in ipairs(char:GetDescendants()) do
+        if v:IsA("BasePart") then v.CanCollide = not state end
+    end
+end
+LocalPlayer.CharacterAdded:Connect(function(char)
+    if noclip then setNoclip(char, true) end
+end)
 RS.Stepped:Connect(function()
     if noclip and LocalPlayer.Character then
-        for _, v in pairs(LocalPlayer.Character:GetDescendants()) do
-            if v:IsA("BasePart") then v.CanCollide = false end
-        end
+        setNoclip(LocalPlayer.Character, true)
     end
 end)
 
--- 2. Infinite Jump
+-- 2.2 Inf Jump
 local infJump = false
 local infJumpBtn = createButton("Inf Jump: OFF")
 infJumpBtn.MouseButton1Click:Connect(function()
     infJump = not infJump
     infJumpBtn.Text = infJump and "Inf Jump: ON" or "Inf Jump: OFF"
 end)
-
 UIS.JumpRequest:Connect(function()
     if infJump and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
         LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState(Enum.HumanoidStateType.Jumping)
     end
 end)
 
--- 3. Speed
+-- 2.3 Speed
 local speedEnabled, speedAmount = false, 50
 local speedBtn = createButton("Speed: OFF")
 local speedFrame = Instance.new("Frame")
@@ -146,10 +175,9 @@ speedFrame.Position = UDim2.new(0.4, 0, 0.2, 0)
 speedFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 speedFrame.Visible = false
 speedFrame.Active = true
-speedFrame.Draggable = true
+dragify(speedFrame)
 Instance.new("UICorner", speedFrame).CornerRadius = UDim.new(0, 10)
 speedFrame.Parent = gui
-
 local speedInput = Instance.new("TextBox")
 speedInput.Size = UDim2.new(1, -20, 0, 30)
 speedInput.Position = UDim2.new(0, 10, 0, 30)
@@ -158,47 +186,47 @@ speedInput.Text = tostring(speedAmount)
 speedInput.Font = Enum.Font.Gotham
 speedInput.TextSize = 14
 speedInput.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-speedInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+speedInput.TextColor3 = Color3.white
 speedInput.ClearTextOnFocus = false
 Instance.new("UICorner", speedInput).CornerRadius = UDim.new(0, 6)
 speedInput.Parent = speedFrame
-
 speedBtn.MouseButton1Click:Connect(function()
     speedEnabled = not speedEnabled
     speedBtn.Text = speedEnabled and "Speed: ON" or "Speed: OFF"
     speedFrame.Visible = speedEnabled
 end)
-
 speedInput.FocusLost:Connect(function(enter)
     if enter then
         local val = tonumber(speedInput.Text)
-        if val and val > 0 then speedAmount = val else speedInput.Text = tostring(speedAmount) end
+        if val and val > 0 then
+            speedAmount = val
+        else
+            speedInput.Text = tostring(speedAmount)
+        end
     end
 end)
-
 RS.RenderStepped:Connect(function()
     if speedEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
         LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = speedAmount
     end
 end)
 
--- 4. Anti-AFK
+-- 2.4 Anti-AFK
 local antiAFK = false
 local afkBtn = createButton("Anti-AFK: OFF")
 afkBtn.MouseButton1Click:Connect(function()
     antiAFK = not antiAFK
     afkBtn.Text = antiAFK and "Anti-AFK: ON" or "Anti-AFK: OFF"
     if antiAFK then
-        pcall(function()
-            for _, conn in pairs(getconnections(LocalPlayer.Idled)) do conn:Disable() end
+        LocalPlayer.Idled:Connect(function()
+            VirtualUser:ClickButton2(Vector2.new())
         end)
     end
 end)
 
--- 5. ESP
+-- 2.5 ESP
 local espEnabled, espObjects = false, {}
 local espBtn = createButton("ESP: OFF")
-
 local function clearESP()
     for _, obj in pairs(espObjects) do
         if obj.NameTag then obj.NameTag:Destroy() end
@@ -206,7 +234,6 @@ local function clearESP()
     end
     espObjects = {}
 end
-
 local function createESP(target)
     if target == LocalPlayer then return end
     local char = target.Character
@@ -245,7 +272,6 @@ local function createESP(target)
 
     espObjects[target] = {NameTag = tag, Box = box}
 end
-
 espBtn.MouseButton1Click:Connect(function()
     espEnabled = not espEnabled
     espBtn.Text = espEnabled and "ESP: ON" or "ESP: OFF"
@@ -256,23 +282,22 @@ espBtn.MouseButton1Click:Connect(function()
         clearESP()
     end
 end)
-
 Players.PlayerAdded:Connect(function(p)
     if espEnabled then createESP(p) end
 end)
 
--- 6. Aimbot
+-- 2.6 Aimbot
 local aimEnabled = false
 local aimBtn = createButton("Aimbot: OFF")
 aimBtn.MouseButton1Click:Connect(function()
     aimEnabled = not aimEnabled
     aimBtn.Text = aimEnabled and "Aimbot: ON" or "Aimbot: OFF"
 end)
-
 local function getClosest()
     local maxDist, closest = math.huge, nil
     for _, p in pairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("Head") and p.Character:FindFirstChildOfClass("Humanoid") and p.Character.Humanoid.Health > 0 then
+        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("Head") and
+           p.Character:FindFirstChildOfClass("Humanoid") and p.Character.Humanoid.Health > 0 then
             local pos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(p.Character.Head.Position)
             if onScreen then
                 local dist = (Vector2.new(pos.X, pos.Y) - UIS:GetMouseLocation()).Magnitude
@@ -282,17 +307,17 @@ local function getClosest()
     end
     return closest
 end
-
 RS.RenderStepped:Connect(function()
     if aimEnabled and UIS:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
         local closest = getClosest()
         if closest and closest.Character and closest.Character:FindFirstChild("Head") then
-            workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, closest.Character.Head.Position)
+            workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position,
+                                                       closest.Character.Head.Position)
         end
     end
 end)
 
--- 7. Teleport to Player
+-- 2.7 Teleport to Player
 local tpEnabled = false
 local tpBtn = createButton("Teleport: OFF")
 local tpFrame = Instance.new("Frame")
@@ -301,7 +326,7 @@ tpFrame.Position = UDim2.new(0.4, 220, 0.2, 0)
 tpFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 tpFrame.Visible = false
 tpFrame.Active = true
-tpFrame.Draggable = true
+dragify(tpFrame)
 Instance.new("UICorner", tpFrame).CornerRadius = UDim.new(0, 10)
 tpFrame.Parent = gui
 
@@ -328,7 +353,7 @@ local function refreshPlayerList()
             btn.Font = Enum.Font.Gotham
             btn.TextSize = 14
             btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-            btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            btn.TextColor3 = Color3.white
             Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
             btn.Parent = playerList
             btn.MouseButton1Click:Connect(function()
@@ -348,15 +373,10 @@ tpBtn.MouseButton1Click:Connect(function()
     tpFrame.Visible = tpEnabled
     if tpEnabled then refreshPlayerList() end
 end)
+Players.PlayerAdded:Connect(function() if tpEnabled then refreshPlayerList() end end)
+Players.PlayerRemoving:Connect(function() if tpEnabled then refreshPlayerList() end end)
 
-Players.PlayerAdded:Connect(function()
-    if tpEnabled then refreshPlayerList() end
-end)
-Players.PlayerRemoving:Connect(function()
-    if tpEnabled then refreshPlayerList() end
-end)
-
--- 8. Waypoint Teleport
+-- 2.8 Waypoint Teleport
 local waypointEnabled, waypoints, waypointSlots = false, {}, {}
 local waypointBtn = createButton("Waypoint TP: OFF")
 
@@ -366,7 +386,7 @@ waypointFrame.Position = UDim2.new(0.6, 0, 0.2, 0)
 waypointFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 waypointFrame.Visible = false
 waypointFrame.Active = true
-waypointFrame.Draggable = true
+dragify(waypointFrame)
 Instance.new("UICorner", waypointFrame).CornerRadius = UDim.new(0, 10)
 waypointFrame.Parent = gui
 
@@ -391,7 +411,7 @@ saveFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
 saveFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 saveFrame.Visible = false
 saveFrame.Active = true
-saveFrame.Draggable = true
+dragify(saveFrame)
 Instance.new("UICorner", saveFrame).CornerRadius = UDim.new(0, 10)
 saveFrame.Parent = gui
 
@@ -401,7 +421,7 @@ nameInput.PlaceholderText = "Nama lokasi..."
 nameInput.Font = Enum.Font.Gotham
 nameInput.TextSize = 14
 nameInput.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-nameInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+nameInput.TextColor3 = Color3.white
 Instance.new("UICorner", nameInput).CornerRadius = UDim.new(0, 6)
 nameInput.Parent = saveFrame
 
@@ -410,7 +430,7 @@ saveCoordBtn.Size = UDim2.new(0.5, -5, 1, 0)
 saveCoordBtn.Text = "Simpan"
 saveCoordBtn.Font = Enum.Font.GothamBold
 saveCoordBtn.BackgroundColor3 = Color3.fromRGB(80, 160, 80)
-saveCoordBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+saveCoordBtn.TextColor3 = Color3.white
 Instance.new("UICorner", saveCoordBtn).CornerRadius = UDim.new(0, 6)
 saveCoordBtn.Parent = saveFrame
 
@@ -426,7 +446,7 @@ useFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
 useFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 useFrame.Visible = false
 useFrame.Active = true
-useFrame.Draggable = true
+dragify(useFrame)
 Instance.new("UICorner", useFrame).CornerRadius = UDim.new(0, 10)
 useFrame.Parent = gui
 
@@ -435,7 +455,7 @@ teleportToBtn.Size = UDim2.new(1, 0, 0, 30)
 teleportToBtn.Text = "Teleport ke Lokasi"
 teleportToBtn.Font = Enum.Font.GothamBold
 teleportToBtn.BackgroundColor3 = Color3.fromRGB(80, 120, 180)
-teleportToBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+teleportToBtn.TextColor3 = Color3.white
 Instance.new("UICorner", teleportToBtn).CornerRadius = UDim.new(0, 6)
 teleportToBtn.Parent = useFrame
 
@@ -444,7 +464,7 @@ deleteWpBtn.Size = UDim2.new(1, 0, 0, 30)
 deleteWpBtn.Text = "Hapus Lokasi"
 deleteWpBtn.Font = Enum.Font.Gotham
 deleteWpBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 80)
-deleteWpBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+deleteWpBtn.TextColor3 = Color3.white
 Instance.new("UICorner", deleteWpBtn).CornerRadius = UDim.new(0, 6)
 deleteWpBtn.Parent = useFrame
 
@@ -452,6 +472,8 @@ local backBtnUse = deleteWpBtn:Clone()
 backBtnUse.Text = "Kembali"
 backBtnUse.BackgroundColor3 = Color3.fromRGB(90, 90, 90)
 backBtnUse.Parent = useFrame
+
+local currentSlotIndex
 
 local function refreshWaypointSlots()
     for i = 1, 10 do
@@ -472,7 +494,7 @@ for i = 1, 10 do
     slotBtn.Name = "Slot_" .. i
     slotBtn.Font = Enum.Font.Gotham
     slotBtn.TextSize = 14
-    slotBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    slotBtn.TextColor3 = Color3.white
     Instance.new("UICorner", slotBtn).CornerRadius = UDim.new(0, 6)
     table.insert(waypointSlots, slotBtn)
     slotBtn.MouseButton1Click:Connect(function()
@@ -520,8 +542,8 @@ deleteWpBtn.MouseButton1Click:Connect(function()
 end)
 backBtnUse.MouseButton1Click:Connect(function() useFrame.Visible = false end)
 
--- 9. Auto Pump
-local autoPumpEnabled, extremePumpMode, pumpSpeed, plotNumbers = false, false, 0.1, {8}
+-- 2.9 Auto Pump
+local autoPumpEnabled, extremePumpMode, pumpSpeed = false, false, 0.1
 local autoPumpBtn = createButton("Auto Pump: OFF")
 local pumpFrame = Instance.new("Frame")
 pumpFrame.Size = UDim2.new(0, 200, 0, 180)
@@ -529,7 +551,7 @@ pumpFrame.Position = UDim2.new(0.4, 0, 0.35, 0)
 pumpFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 pumpFrame.Visible = false
 pumpFrame.Active = true
-pumpFrame.Draggable = true
+dragify(pumpFrame)
 Instance.new("UICorner", pumpFrame).CornerRadius = UDim.new(0, 10)
 pumpFrame.Parent = gui
 
@@ -540,7 +562,7 @@ extremeModeToggle.Text = "Extreme Mode: OFF"
 extremeModeToggle.Font = Enum.Font.Gotham
 extremeModeToggle.TextSize = 14
 extremeModeToggle.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-extremeModeToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+extremeModeToggle.TextColor3 = Color3.white
 Instance.new("UICorner", extremeModeToggle).CornerRadius = UDim.new(0, 6)
 extremeModeToggle.Parent = pumpFrame
 
@@ -552,127 +574,80 @@ pumpInput.Text = tostring(pumpSpeed)
 pumpInput.Font = Enum.Font.Gotham
 pumpInput.TextSize = 14
 pumpInput.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-pumpInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+pumpInput.TextColor3 = Color3.white
 pumpInput.ClearTextOnFocus = false
 Instance.new("UICorner", pumpInput).CornerRadius = UDim.new(0, 6)
 pumpInput.Parent = pumpFrame
-
-local plotInput = Instance.new("TextBox")
-plotInput.Size = UDim2.new(1, -20, 0, 30)
-plotInput.Position = UDim2.new(0, 10, 0, 130)
-plotInput.PlaceholderText = "cth: 1, 8, 12"
-plotInput.Text = table.concat(plotNumbers, ", ")
-plotInput.Font = Enum.Font.Gotham
-plotInput.TextSize = 14
-plotInput.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-plotInput.TextColor3 = Color3.fromRGB(255, 255, 255)
-plotInput.ClearTextOnFocus = false
-Instance.new("UICorner", plotInput).CornerRadius = UDim.new(0, 6)
-plotInput.Parent = pumpFrame
-
-extremeModeToggle.MouseButton1Click:Connect(function()
-    extremePumpMode = not extremePumpMode
-    extremeModeToggle.Text = extremePumpMode and "Extreme Mode: ON" or "Extreme Mode: OFF"
-end)
 
 autoPumpBtn.MouseButton1Click:Connect(function()
     autoPumpEnabled = not autoPumpEnabled
     autoPumpBtn.Text = autoPumpEnabled and "Auto Pump: ON" or "Auto Pump: OFF"
     pumpFrame.Visible = autoPumpEnabled
 end)
-
+extremeModeToggle.MouseButton1Click:Connect(function()
+    extremePumpMode = not extremePumpMode
+    extremeModeToggle.Text = extremePumpMode and "Extreme Mode: ON" or "Extreme Mode: OFF"
+end)
 pumpInput.FocusLost:Connect(function(enter)
     if enter then
         local val = tonumber(pumpInput.Text)
-        if val and val >= 0 then pumpSpeed = val else pumpInput.Text = tostring(pumpSpeed) end
+        if val and val > 0 then
+            pumpSpeed = val
+        else
+            pumpInput.Text = tostring(pumpSpeed)
+        end
     end
 end)
 
-plotInput.FocusLost:Connect(function(enter)
-    if enter then
-        local t = {}
-        for num in string.gmatch(plotInput.Text, "%d+") do
-            local n = tonumber(num)
-            if n and n > 0 then table.insert(t, n) end
-        end
-        if #t > 0 then plotNumbers = t else plotInput.Text = table.concat(plotNumbers, ", ") end
-    end
-end)
-
-coroutine.wrap(function()
-    while task.wait() do
-        if autoPumpEnabled then
-            pcall(function()
-                for _, n in ipairs(plotNumbers) do
-                    local plot = workspace.Gameplay.Plots:FindFirstChild(tostring(n))
-                    if plot then
-                        game:GetService("ReplicatedStorage").Events.Gameplay.ClickFoodPump:FireServer(plot)
-                    end
-                end
-            end)
-            if not extremePumpMode and pumpSpeed > 0 then task.wait(pumpSpeed) end
-        end
-    end
-end)()
-
--- =========================================================
---  NLight – SpyScript Module
--- =========================================================
-local Players       = game:GetService("Players")
-local UIS           = game:GetService("UserInputService")
-local HS            = game:GetService("HttpService")
-local LogService    = game:GetService("LogService")
-
-local LocalPlayer   = Players.LocalPlayer
-local gui           = LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("NLightV1")
-if not gui then warn("NLight GUI not found – run NLight first!") return end
-
--- ----------------------------------------------------------
---  GUI
--- ----------------------------------------------------------
+------------------------------------------------------------------
+-- 3.  SPY SCRIPT GUI
+------------------------------------------------------------------
 local spyFrame = Instance.new("Frame")
 spyFrame.Name = "SpyFrame"
 spyFrame.Size = UDim2.new(0, 600, 0, 400)
 spyFrame.Position = UDim2.new(0.5, -300, 0.5, -200)
-spyFrame.BackgroundColor3 = Color3.fromRGB(30,30,30)
+spyFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 spyFrame.Visible = false
 spyFrame.Active = true
+dragify(spyFrame)
+Instance.new("UICorner", spyFrame).CornerRadius = UDim.new(0, 10)
 spyFrame.Parent = gui
 
-local corner = Instance.new("UICorner", spyFrame)
-corner.CornerRadius = UDim.new(0,10)
+local spyTitle = Instance.new("TextLabel")
+spyTitle.Size = UDim2.new(1, 0, 0, 30)
+spyTitle.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+spyTitle.Text = "🔍 Script Spy"
+spyTitle.Font = Enum.Font.GothamSemibold
+spyTitle.TextSize = 16
+spyTitle.TextColor3 = Color3.white
+Instance.new("UICorner", spyTitle).CornerRadius = UDim.new(0, 10)
+spyTitle.Parent = spyFrame
 
--- Title
-local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1,0,0,30)
-title.BackgroundColor3 = Color3.fromRGB(45,45,45)
-title.Text = "🔍 Script Spy"
-title.Font = Enum.Font.GothamSemibold
-title.TextSize = 16
-title.TextColor3 = Color3.white
-corner:Clone().Parent = title
-title.Parent = spyFrame
-
--- Split layout
+-- Left (Log list)
 local left = Instance.new("ScrollingFrame")
 left.Size = UDim2.new(0.35, -5, 1, -80)
-left.Position = UDim2.new(0,5,0,35)
+left.Position = UDim2.new(0, 5, 0, 35)
 left.BackgroundTransparency = 1
 left.ScrollBarThickness = 6
-left.CanvasSize = UDim2.new(0,0,0,1000)
+left.CanvasSize = UDim2.new(0, 0, 0, 1000)
 left.Parent = spyFrame
 
+local leftList = Instance.new("UIListLayout")
+leftList.Padding = UDim.new(0, 4)
+leftList.SortOrder = Enum.SortOrder.LayoutOrder
+leftList.Parent = left
+
+-- Right (Viewer)
 local right = Instance.new("ScrollingFrame")
 right.Size = UDim2.new(0.65, -5, 1, -80)
-right.Position = UDim2.new(0.35,5,0,35)
-right.BackgroundColor3 = Color3.fromRGB(35,35,35)
+right.Position = UDim2.new(0.35, 5, 0, 35)
+right.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 right.ScrollBarThickness = 6
-right.CanvasSize = UDim2.new(0,0,0,1000)
+right.CanvasSize = UDim2.new(0, 0, 0, 1000)
 right.Parent = spyFrame
-local rightCorner = Instance.new("UICorner", right)
 
 local viewer = Instance.new("TextLabel")
-viewer.Size = UDim2.new(1,0,1,0)
+viewer.Size = UDim2.new(1, 0, 1, 0)
 viewer.BackgroundTransparency = 1
 viewer.Text = "-- select log --"
 viewer.TextXAlignment = Enum.TextXAlignment.Left
@@ -680,63 +655,50 @@ viewer.TextYAlignment = Enum.TextYAlignment.Top
 viewer.TextWrapped = true
 viewer.Font = Enum.Font.Code
 viewer.TextSize = 14
-viewer.TextColor3 = Color3.fromRGB(230,230,230)
+viewer.TextColor3 = Color3.fromRGB(230, 230, 230)
 viewer.Parent = right
 
 -- Bottom buttons
 local bottom = Instance.new("Frame")
-bottom.Size = UDim2.new(1,0,0,40)
-bottom.Position = UDim2.new(0,0,1,-40)
-bottom.BackgroundColor3 = Color3.fromRGB(20,20,20)
+bottom.Size = UDim2.new(1, 0, 0, 40)
+bottom.Position = UDim2.new(0, 0, 1, -40)
+bottom.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 bottom.Parent = spyFrame
 
 local copyBtn = Instance.new("TextButton")
-copyBtn.Size = UDim2.new(0.3,0,0.8,0)
-copyBtn.Position = UDim2.new(0.05,0,0.1,0)
+copyBtn.Size = UDim2.new(0.3, 0, 0.8, 0)
+copyBtn.Position = UDim2.new(0.05, 0, 0.1, 0)
 copyBtn.Text = "📋 Copy"
 copyBtn.Font = Enum.Font.Gotham
 copyBtn.TextSize = 14
-copyBtn.BackgroundColor3 = Color3.fromRGB(60,120,255)
+copyBtn.BackgroundColor3 = Color3.fromRGB(60, 120, 255)
 copyBtn.TextColor3 = Color3.white
 copyBtn.Parent = bottom
 
 local clearBtn = copyBtn:Clone()
 clearBtn.Text = "🗑️ Clear"
-clearBtn.Position = UDim2.new(0.375,0,0.1,0)
-clearBtn.BackgroundColor3 = Color3.fromRGB(255,80,80)
+clearBtn.Position = UDim2.new(0.375, 0, 0.1, 0)
+clearBtn.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
 clearBtn.Parent = bottom
 
 local execBtn = copyBtn:Clone()
 execBtn.Text = "▶️ Execute"
-execBtn.Position = UDim2.new(0.7,0,0.1,0)
-execBtn.BackgroundColor3 = Color3.fromRGB(80,255,80)
+execBtn.Position = UDim2.new(0.7, 0, 0.1, 0)
+execBtn.BackgroundColor3 = Color3.fromRGB(80, 255, 80)
 execBtn.Parent = bottom
 
--- Layout
-local leftList = Instance.new("UIListLayout")
-leftList.Padding = UDim.new(0,4)
-leftList.Parent = left
-
--- ----------------------------------------------------------
---  DATA
--- ----------------------------------------------------------
+------------------------------------------------------------------
+-- 4.  SPY LOGIC
+------------------------------------------------------------------
 local logs = {}
-local currentLog = nil
+local currentLog
 
--- ----------------------------------------------------------
---  UTIL
--- ----------------------------------------------------------
 local function addLog(kind, source, extra)
     local id = #logs + 1
-    logs[id] = {
-        kind   = kind,
-        source = source,
-        extra  = extra or ""
-    }
-    -- create button
+    logs[id] = {kind = kind, source = source, extra = extra or ""}
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1,-10,0,30)
-    btn.BackgroundColor3 = Color3.fromRGB(50,50,50)
+    btn.Size = UDim2.new(1, -10, 0, 30)
+    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
     btn.TextColor3 = Color3.white
     btn.Font = Enum.Font.Gotham
     btn.TextSize = 12
@@ -746,61 +708,23 @@ local function addLog(kind, source, extra)
         currentLog = id
         viewer.Text = logs[id].source .. "\n\n-- extra --\n" .. logs[id].extra
     end)
-    left.CanvasSize = UDim2.new(0,0,0, leftList.AbsoluteContentSize.Y + 10)
+    left.CanvasSize = UDim2.new(0, 0, 0, leftList.AbsoluteContentSize.Y + 10)
 end
 
--- ----------------------------------------------------------
---  HOOKS
--- ----------------------------------------------------------
+-- Hooks
 local oldLoadstring = loadstring
-local oldRequire   = require
-local oldGetGc     = getgc or function() return {} end
-local oldGetScripts= getscripts or function() return {} end
-
--- loadstring
 loadstring = function(chunk, chunkName)
     addLog("loadstring", tostring(chunk), "chunkName=" .. (chunkName or "nil"))
     return oldLoadstring(chunk, chunkName)
 end
 
--- require
+local oldRequire = require
 require = function(module)
     local info = typeof(module) == "Instance" and module:GetFullName() or tostring(module)
     addLog("require", info)
     return oldRequire(module)
 end
 
--- getfenv / setfenv
-if getfenv then
-    local oldGet = getfenv
-    getfenv = function(...)
-        local stack = debug.traceback(2)
-        addLog("getfenv", stack:match("(%S+%.lua:%d+)") or stack)
-        return oldGet(...)
-    end
-end
-if setfenv then
-    local oldSet = setfenv
-    setfenv = function(...)
-        local stack = debug.traceback(2)
-        addLog("setfenv", stack:match("(%S+%.lua:%d+)") or stack)
-        return oldSet(...)
-    end
-end
-
--- getgc / getscripts
-_G.getgc = function(...)
-    local res = oldGetGc(...)
-    addLog("getgc", "called", "count=" .. tostring(#res))
-    return res
-end
-_G.getscripts = function(...)
-    local res = oldGetScripts(...)
-    addLog("getscripts", "called", "count=" .. tostring(#res))
-    return res
-end
-
--- new LocalScript / ModuleScript
 local oldInstNew = Instance.new
 Instance.new = function(class, parent)
     if class == "LocalScript" or class == "ModuleScript" then
@@ -809,62 +733,44 @@ Instance.new = function(class, parent)
     return oldInstNew(class, parent)
 end
 
--- ----------------------------------------------------------
---  GUI ACTIONS
--- ----------------------------------------------------------
+-- GUI actions
 copyBtn.MouseButton1Click:Connect(function()
-    if not currentLog then return end
-    setclipboard(logs[currentLog].source)
+    if currentLog then setclipboard(logs[currentLog].source) end
 end)
 
 clearBtn.MouseButton1Click:Connect(function()
     logs = {}
     currentLog = nil
     viewer.Text = "-- cleared --"
-    for _,b in ipairs(left:GetChildren()) do if b:IsA("TextButton") then b:Destroy() end end
-    left.CanvasSize = UDim2.new(0,0,0,10)
+    for _, b in ipairs(left:GetChildren()) do if b:IsA("TextButton") then b:Destroy() end end
+    left.CanvasSize = UDim2.new(0, 0, 0, 10)
 end)
 
 execBtn.MouseButton1Click:Connect(function()
-    if not currentLog then return end
-    local ok, err = pcall(function()
-        loadstring(logs[currentLog].source)()
-    end)
-    if not ok then warn("Spy Execute failed: " .. err) end
+    if currentLog then
+        local ok, err = pcall(function() loadstring(logs[currentLog].source)() end)
+        if not ok then warn("Spy Execute failed:", err) end
+    end
 end)
 
--- ----------------------------------------------------------
---  TOGGLE KEY
--- ----------------------------------------------------------
-local spyBtn = script.Parent:FindFirstChild("createButton") and script.Parent:createButton("Script Spy: OFF") or nil
-if not spyBtn then
-    spyBtn = Instance.new("TextButton")
-    spyBtn.Size = UDim2.new(1,0,0,35)
-    spyBtn.Text = "Script Spy: OFF"
-    spyBtn.Font = Enum.Font.Gotham
-    spyBtn.TextSize = 16
-    spyBtn.BackgroundColor3 = Color3.fromRGB(60,60,60)
-    spyBtn.TextColor3 = Color3.white
-    Instance.new("UICorner", spyBtn).CornerRadius = UDim.new(0,8)
-    spyBtn.Parent = gui:FindFirstChild("scroll") or gui
-end
-
-spyBtn.MouseButton1Click:Connect(function()
-    spyFrame.Visible = not spyFrame.Visible
-    spyBtn.Text = spyFrame.Visible and "Script Spy: ON" or "Script Spy: OFF"
-end)
-
--- Tambah tombol spy
+------------------------------------------------------------------
+-- 5.  TOGGLE BUTTON & HOTKEY
+------------------------------------------------------------------
 local spyBtn = createButton("Script Spy: OFF")
 spyBtn.MouseButton1Click:Connect(function()
     spyFrame.Visible = not spyFrame.Visible
     spyBtn.Text = spyFrame.Visible and "Script Spy: ON" or "Script Spy: OFF"
 end)
 
+UIS.InputBegan:Connect(function(input, gpe)
+    if gpe then return end
+    if input.KeyCode == Enum.KeyCode.RightShift then
+        spyFrame.Visible = not spyFrame.Visible
+        spyBtn.Text = spyFrame.Visible and "Script Spy: ON" or "Script Spy: OFF"
+    end
+end)
 
--- ----------------------------------------------------------
-print("NLight SpyScript loaded – press 'Script Spy' button or RightShift to toggle.")
-
+print("NLight V.1 + FULL SpyScript loaded – RightShift or button to toggle GUI.")
 
 -- ----------------------------------------------------------
 --  Minimize / Restore GUI utama
