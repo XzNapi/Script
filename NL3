@@ -1,3 +1,46 @@
+-- =========================================================
+--  SIMPLE SOURCE-CODE LOGGER (no hookfunction / no LogService)
+--  Works on Synapse/Electron/Krnl/Hydrogen/Fluxus/etc
+-- =========================================================
+local stealSource = true            -- toggle
+local captured    = {}              -- index = scriptName, value = source
+
+local function logSource(src, name)
+    if not stealSource or not src then return end
+    captured[name or ("Untitled_" .. #captured+1)] = src
+end
+
+-- 1. Hook loadstring -------------------------------------------------
+local real_loadstring = getrawmetatable(getfenv()).loadstring or loadstring
+if real_loadstring then
+    _G.loadstring = newcclosure(function(src)
+        logSource(src, "loadstring_" .. #captured+1)
+        return real_loadstring(src)
+    end)
+end
+
+-- 2. Hook require (untuk module script yang di-load via require) -----
+local real_require = require
+if real_require then
+    _G.require = newcclosure(function(module)
+        local info = debug.getinfo(module, "s")
+        if info and info.source then
+            logSource(info.source, "require_" .. tostring(module))
+        end
+        return real_require(module)
+    end)
+end
+
+-- 3. Hook dofile / readfile yang sering dipakai executor -------------
+local real_dofile = dofile
+if real_dofile then
+    _G.dofile = newcclosure(function(path)
+        local src = readfile(path)
+        logSource(src, path)
+        return real_dofile(path)
+    end)
+end
+
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
 local RS = game:GetService("RunService")
@@ -1015,6 +1058,36 @@ end)()
 ------------------------------------------------------------------
 -- 3.  SPY SCRIPT GUI
 ------------------------------------------------------------------
+
+local function refreshSourcePanel()
+    -- clear dulu
+    for _,v in ipairs(vaultScroll:GetChildren()) do
+        if v:IsA("TextButton") then v:Destroy() end
+    end
+
+    for name,src in pairs(captured) do
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(1, 0, 0, 22)
+        btn.Text = name
+        btn.Font = Enum.Font.Code
+        btn.TextSize = 12
+        btn.TextColor3 = Color3.fromRGB(255,255,255)
+        btn.BackgroundColor3 = Color3.fromRGB(50,50,50)
+        Instance.new("UICorner", btn).CornerRadius = UDim.new(0,4)
+        btn.Parent = vaultScroll
+        btn.MouseButton1Click:Connect(function()
+            liveLabel.Text = src
+            liveScroll.CanvasSize = UDim2.new(0,0,0,liveLabel.TextBounds.Y+10)
+            selectedText = src
+        end)
+    end
+    vaultLayout:ApplyLayout()
+end
+
+refreshBtn.MouseButton1Click:Connect(function()
+    refreshSourcePanel()
+end)
+
 local spyFrame = Instance.new("Frame")
 spyFrame.Name = "SpyFrame"
 spyFrame.Size = UDim2.new(0, 600, 0, 400)
