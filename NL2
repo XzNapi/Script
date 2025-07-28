@@ -614,6 +614,292 @@ end)
 -- END: Waypoint Teleport
 -- =================================================================
 
+-- ==============================================================
+-- START: Script Spy (Remote Logger + Log Vault + UI)
+-- ==============================================================
+
+local HttpService = game:GetService("HttpService")
+local RunService  = game:GetService("RunService")
+
+-- state
+local spyEnabled      = false
+local spyLogEntries   = {}   -- array {text = "...", ts = tick()}
+local logVault        = {}   -- simpan log untuk dipakai lagi
+local selectedLogIdx  = nil
+
+-- tombol utama
+local spyBtn = createButton("Script Spy: OFF")
+
+-- main frame
+local spyFrame = Instance.new("Frame")
+spyFrame.Name = "SpyFrame"
+spyFrame.Size = UDim2.new(0, 550, 0, 320)
+spyFrame.Position = UDim2.new(0.5, -275, 0.5, -160)
+spyFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+spyFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+spyFrame.Visible = false
+spyFrame.Active = true
+spyFrame.Draggable = true
+Instance.new("UICorner", spyFrame).CornerRadius = UDim.new(0, 10)
+
+local spyTitle = Instance.new("TextLabel")
+spyTitle.Size = UDim2.new(1, 0, 0, 30)
+spyTitle.Text = "Script Spy"
+spyTitle.Font = Enum.Font.GothamBold
+spyTitle.TextSize = 16
+spyTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+spyTitle.BackgroundTransparency = 1
+spyTitle.Parent = spyFrame
+
+-- kontainer utama (kiri = log, kanan = vault)
+local mainHolder = Instance.new("Frame")
+mainHolder.Size = UDim2.new(1, -20, 1, -70)
+mainHolder.Position = UDim2.new(0, 10, 0, 35)
+mainHolder.BackgroundTransparency = 1
+mainHolder.Parent = spyFrame
+
+local splitLayout = Instance.new("UIListLayout", mainHolder)
+splitLayout.FillDirection = Enum.FillDirection.Horizontal
+splitLayout.Padding = UDim.new(0, 10)
+
+-- >>>>>>>>> LEFT: output spy
+local leftFrame = Instance.new("Frame")
+leftFrame.Size = UDim2.new(0.6, 0, 1, 0)
+leftFrame.BackgroundTransparency = 1
+leftFrame.Parent = mainHolder
+
+local spyScroll = Instance.new("ScrollingFrame")
+spyScroll.Size = UDim2.new(1, 0, 1, -35)
+spyScroll.Position = UDim2.new(0, 0, 0, 0)
+spyScroll.BackgroundTransparency = 1
+spyScroll.ScrollBarThickness = 6
+spyScroll.CanvasSize = UDim2.new(0, 0, 0, 1000)
+spyScroll.Parent = leftFrame
+
+local spyLayout = Instance.new("UIListLayout", spyScroll)
+spyLayout.Padding = UDim.new(0, 2)
+spyLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+local spyPadding = Instance.new("UIPadding", spyScroll)
+spyPadding.PaddingTop = UDim.new(0, 4)
+spyPadding.PaddingLeft = UDim.new(0, 4)
+spyPadding.PaddingRight = UDim.new(0, 4)
+
+-- tombol bawah kiri (Copy, Exec, Clear)
+local btnBar = Instance.new("Frame")
+btnBar.Size = UDim2.new(1, 0, 0, 30)
+btnBar.Position = UDim2.new(0, 0, 1, -30)
+btnBar.BackgroundTransparency = 1
+btnBar.Parent = leftFrame
+
+local btnLayout = Instance.new("UIListLayout", btnBar)
+btnLayout.FillDirection = Enum.FillDirection.Horizontal
+btnLayout.Padding = UDim.new(0, 6)
+
+local copyBtn = Instance.new("TextButton")
+copyBtn.Size = UDim2.new(0.33, -4, 1, 0)
+copyBtn.Text = "Copy"
+copyBtn.Font = Enum.Font.GothamBold
+copyBtn.TextSize = 13
+copyBtn.BackgroundColor3 = Color3.fromRGB(80, 120, 255)
+copyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+Instance.new("UICorner", copyBtn).CornerRadius = UDim.new(0, 6)
+copyBtn.Parent = btnBar
+
+local execBtn = copyBtn:Clone()
+execBtn.Text = "Exec"
+execBtn.BackgroundColor3 = Color3.fromRGB(80, 180, 80)
+execBtn.Parent = btnBar
+
+local clearBtn = copyBtn:Clone()
+clearBtn.Text = "Clear"
+clearBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 80)
+clearBtn.Parent = btnBar
+
+-- >>>>>>>>> RIGHT: vault list
+local rightFrame = Instance.new("Frame")
+rightFrame.Size = UDim2.new(0.4, 0, 1, 0)
+rightFrame.BackgroundTransparency = 1
+rightFrame.Parent = mainHolder
+
+local vaultScroll = Instance.new("ScrollingFrame")
+vaultScroll.Size = UDim2.new(1, 0, 1, -35)
+vaultScroll.Position = UDim2.new(0, 0, 0, 0)
+vaultScroll.BackgroundTransparency = 1
+vaultScroll.ScrollBarThickness = 6
+vaultScroll.CanvasSize = UDim2.new(0, 0, 0, 1000)
+vaultScroll.Parent = rightFrame
+
+local vaultLayout = Instance.new("UIListLayout", vaultScroll)
+vaultLayout.Padding = UDim.new(0, 2)
+
+local vaultPadding = Instance.new("UIPadding", vaultScroll)
+vaultPadding.PaddingTop = UDim.new(0, 4)
+vaultPadding.PaddingLeft = UDim.new(0, 4)
+vaultPadding.PaddingRight = UDim.new(0, 4)
+
+local vaultTitle = Instance.new("TextLabel")
+vaultTitle.Size = UDim2.new(1, 0, 0, 20)
+vaultTitle.Text = "Saved Logs"
+vaultTitle.Font = Enum.Font.Gotham
+vaultTitle.TextSize = 13
+vaultTitle.TextColor3 = Color3.fromRGB(180, 180, 180)
+vaultTitle.BackgroundTransparency = 1
+vaultTitle.Parent = rightFrame
+
+-- tombol bawah kanan (Save & Load)
+local vaultBtnBar = Instance.new("Frame")
+vaultBtnBar.Size = UDim2.new(1, 0, 0, 30)
+vaultBtnBar.Position = UDim2.new(0, 0, 1, -30)
+vaultBtnBar.BackgroundTransparency = 1
+vaultBtnBar.Parent = rightFrame
+
+local vaultBtnLayout = Instance.new("UIListLayout", vaultBtnBar)
+vaultBtnLayout.FillDirection = Enum.FillDirection.Horizontal
+vaultBtnLayout.Padding = UDim.new(0, 6)
+
+local saveVaultBtn = Instance.new("TextButton")
+saveVaultBtn.Size = UDim2.new(0.5, -3, 1, 0)
+saveVaultBtn.Text = "Save"
+saveVaultBtn.Font = Enum.Font.GothamBold
+saveVaultBtn.TextSize = 13
+saveVaultBtn.BackgroundColor3 = Color3.fromRGB(120, 120, 255)
+saveVaultBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+Instance.new("UICorner", saveVaultBtn).CornerRadius = UDim.new(0, 6)
+saveVaultBtn.Parent = vaultBtnBar
+
+-- utilitas
+local function serializeArgs(args)
+    local t = {}
+    for _, v in ipairs(args) do
+        local typ = typeof(v)
+        if typ == "Instance" then
+            table.insert(t, 'game:GetService("'..v:GetFullName()..'")')
+        elseif typ == "string" then
+            table.insert(t, '"'..v:gsub('"', '\\"')..'"')
+        elseif typ == "CFrame" or typ == "Vector3" or typ == "UDim2" then
+            table.insert(t, "CFrame.new"..tostring(v))
+        else
+            table.insert(t, tostring(v))
+        end
+    end
+    return table.concat(t, ", ")
+end
+
+local function addLog(remoteType, remote, args)
+    if not spyEnabled then return end
+    local line = string.format('game:GetService("ReplicatedStorage")["%s"]:%s(%s)',
+                               remote.Name,
+                               remoteType,
+                               serializeArgs(args))
+    table.insert(spyLogEntries, {text = line, ts = tick()})
+    -- tambahkan ke spyScroll
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, 0, 0, 18)
+    label.BackgroundTransparency = 1
+    label.Text = line
+    label.Font = Enum.Font.Code
+    label.TextSize = 12
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.TextTruncate = Enum.TextTruncate.AtEnd
+    label.Parent = spyScroll
+    spyLayout:ApplyLayout()
+    spyScroll.CanvasSize = UDim2.new(0, 0, 0, spyLayout.AbsoluteContentSize.Y + 10)
+end
+
+-- hook
+local oldFire = hookfunction(Instance.new("RemoteEvent").FireServer, newcclosure(function(self, ...)
+    addLog("FireServer", self, {...})
+    return oldFire(self, ...)
+end))
+
+local oldInvoke = hookfunction(Instance.new("RemoteFunction").InvokeServer, newcclosure(function(self, ...)
+    addLog("InvokeServer", self, {...})
+    return oldInvoke(self, ...)
+end))
+
+-- tombol toggle
+spyBtn.MouseButton1Click:Connect(function()
+    spyEnabled = not spyEnabled
+    spyBtn.Text = spyEnabled and "Script Spy: ON" or "Script Spy: OFF"
+    spyFrame.Visible = spyEnabled
+end)
+
+-- clear log
+clearBtn.MouseButton1Click:Connect(function()
+    for _, v in ipairs(spyScroll:GetChildren()) do
+        if v:IsA("TextLabel") then v:Destroy() end
+    end
+    spyLogEntries = {}
+    spyScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+end)
+
+-- copy / exec
+local function getClipboard()
+    if setclipboard then return setclipboard end
+    if syn and syn.write_clipboard then return syn.write_clipboard end
+    return nil
+end
+
+copyBtn.MouseButton1Click:Connect(function()
+    if #spyLogEntries == 0 then return end
+    local last = spyLogEntries[#spyLogEntries].text
+    local clip = getClipboard()
+    if clip then clip(last) end
+end)
+
+execBtn.MouseButton1Click:Connect(function()
+    if #spyLogEntries == 0 then return end
+    local last = spyLogEntries[#spyLogEntries].text
+    local fn, err = loadstring(last)
+    if fn then fn() else warn(err) end
+end)
+
+-- vault: save semua log ke vault
+saveVaultBtn.MouseButton1Click:Connect(function()
+    if #spyLogEntries == 0 then return end
+    for _, entry in ipairs(spyLogEntries) do
+        table.insert(logVault, entry.text)
+    end
+    -- refresh vault UI
+    for _, v in ipairs(vaultScroll:GetChildren()) do
+        if v:IsA("TextLabel") then v:Destroy() end
+    end
+    for idx, txt in ipairs(logVault) do
+        local vLabel = Instance.new("TextLabel")
+        vLabel.Size = UDim2.new(1, 0, 0, 18)
+        vLabel.BackgroundTransparency = 1
+        vLabel.Text = idx .. ") " .. txt:sub(1, 45) .. "..."
+        vLabel.Font = Enum.Font.Code
+        vLabel.TextSize = 11
+        vLabel.TextXAlignment = Enum.TextXAlignment.Left
+        vLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+        vLabel.Parent = vaultScroll
+        -- klik untuk load ke spyScroll
+        vLabel.InputBegan:Connect(function(inp)
+            if inp.UserInputType == Enum.UserInputType.MouseButton1 then
+                addLog("Manual", {Name = "Vault"}, {txt})
+            end
+        end)
+    end
+    vaultLayout:ApplyLayout()
+    vaultScroll.CanvasSize = UDim2.new(0, 0, 0, vaultLayout.AbsoluteContentSize.Y + 10)
+end)
+
+-- integrasi minimize / restore
+minimize.MouseButton1Click:Connect(function()
+    spyFrame.Visible = false
+end)
+
+minimizedBtn.MouseButton1Click:Connect(function()
+    if spyEnabled then spyFrame.Visible = true end
+end)
+
+-- ==============================================================
+-- END: Script Spy
+-- ==============================================================
+
 
 -- Auto Pump
 local autoPumpEnabled = false
