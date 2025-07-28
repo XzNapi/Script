@@ -615,8 +615,6 @@ coroutine.wrap(function()
     end
 end)()
 
--- 10. Script Spy FIX + Logika Aktif
-
 -- ----------------------------------------------------------
 --  Minimize / Restore GUI utama
 -- ----------------------------------------------------------
