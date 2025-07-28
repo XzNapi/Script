@@ -780,13 +780,13 @@ Instance.new("UICorner", saveBtn).CornerRadius = UDim.new(0, 6)
 saveBtn.Parent = right
 
 -- ==============================================================
--- LOGIC: tombol log terpisah + live panel langsung
+-- LIVE PANEL STATIS + TOMBOL LOG
 -- ==============================================================
 
 local spyEnabled   = false
 local vaultLogs    = {}   -- {title, line}
 local liveLabel    = nil  -- label tunggal live
-local selectedText = nil  -- untuk copy/exec
+local selectedText = nil
 
 -- util serialize
 local function serialize(args)
@@ -814,7 +814,7 @@ local function refreshVault()
         btn.Size = UDim2.new(1, 0, 0, 22)
         btn.Text = idx .. ") " .. data.title
         btn.Font = Enum.Font.Code
-        btn.TextSize = 11
+        btn.TextSize = 12
         btn.TextColor3 = Color3.fromRGB(255, 255, 255)
         btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
         btn.BackgroundTransparency = 0
@@ -822,17 +822,17 @@ local function refreshVault()
         btn.Parent = vaultScroll
 
         btn.MouseButton1Click:Connect(function()
-            -- pindahkan ke live
             if liveLabel then liveLabel:Destroy() end
             liveLabel = Instance.new("TextLabel")
-            liveLabel.Size = UDim2.new(1, 0, 0, 18)
+            liveLabel.Size = UDim2.new(1, 0, 0, 50)       -- tinggi lebih besar
             liveLabel.BackgroundTransparency = 1
             liveLabel.Text = data.line
             liveLabel.Font = Enum.Font.Code
-            liveLabel.TextSize = 11
+            liveLabel.TextSize = 14                          -- lebih besar
+            liveLabel.TextWrapped = true                     -- wrap agar tidak ke samping
             liveLabel.TextXAlignment = Enum.TextXAlignment.Left
+            liveLabel.TextYAlignment = Enum.TextYAlignment.Top
             liveLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-            liveLabel.TextTruncate = Enum.TextTruncate.AtEnd
             liveLabel.Parent = liveScroll
             liveLayout:ApplyLayout()
             liveScroll.CanvasSize = UDim2.new(0, 0, 0, liveLayout.AbsoluteContentSize.Y + 10)
@@ -843,7 +843,7 @@ local function refreshVault()
     vaultScroll.CanvasSize = UDim2.new(0, 0, 0, vaultLayout.AbsoluteContentSize.Y + 10)
 end
 
--- push ke vault
+-- push ke vault saja, live TIDAK di-update otomatis
 local function pushVault(method, remote, ...)
     if not spyEnabled then return end
     local line  = string.format('game:GetService("ReplicatedStorage")["%s"]:%s(%s)', remote.Name, method, serialize({...}))
@@ -859,23 +859,6 @@ setreadonly(mt, false)
 mt.__namecall = newcclosure(function(self, ...)
     local method = getnamecallmethod()
     if method == "FireServer" or method == "InvokeServer" then
-        -- 1. tampilkan di live
-        if liveLabel then liveLabel:Destroy() end
-        local line = string.format('game:GetService("ReplicatedStorage")["%s"]:%s(%s)', self.Name, method, serialize({...}))
-        liveLabel = Instance.new("TextLabel")
-        liveLabel.Size = UDim2.new(1, 0, 0, 18)
-        liveLabel.BackgroundTransparency = 1
-        liveLabel.Text = line
-        liveLabel.Font = Enum.Font.Code
-        liveLabel.TextSize = 11
-        liveLabel.TextXAlignment = Enum.TextXAlignment.Left
-        liveLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-        liveLabel.TextTruncate = Enum.TextTruncate.AtEnd
-        liveLabel.Parent = liveScroll
-        liveLayout:ApplyLayout()
-        liveScroll.CanvasSize = UDim2.new(0, 0, 0, liveLayout.AbsoluteContentSize.Y + 10)
-        selectedText = line
-        -- 2. simpan ke vault
         pushVault(method, self, ...)
     end
     return oldNamecall(self, ...)
@@ -905,9 +888,7 @@ end)
 clearBtn.MouseButton1Click:Connect(function()
     vaultLogs = {}
     refreshVault()
-    for _, v in ipairs(liveScroll:GetChildren()) do
-        if v:IsA("TextLabel") then v:Destroy() end
-    end
+    if liveLabel then liveLabel:Destroy() end
     liveLabel = nil
 end)
 
@@ -926,7 +907,6 @@ execBtn.MouseButton1Click:Connect(function()
         if fn then fn() else warn("Exec gagal: "..err) end
     end
 end)
-
 
 -- ======
 -- END
