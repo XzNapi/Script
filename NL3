@@ -1059,35 +1059,6 @@ end)()
 -- 3.  SPY SCRIPT GUI
 ------------------------------------------------------------------
 
-local function refreshSourcePanel()
-    -- clear dulu
-    for _,v in ipairs(vaultScroll:GetChildren()) do
-        if v:IsA("TextButton") then v:Destroy() end
-    end
-
-    for name,src in pairs(captured) do
-        local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(1, 0, 0, 22)
-        btn.Text = name
-        btn.Font = Enum.Font.Code
-        btn.TextSize = 12
-        btn.TextColor3 = Color3.fromRGB(255,255,255)
-        btn.BackgroundColor3 = Color3.fromRGB(50,50,50)
-        Instance.new("UICorner", btn).CornerRadius = UDim.new(0,4)
-        btn.Parent = vaultScroll
-        btn.MouseButton1Click:Connect(function()
-            liveLabel.Text = src
-            liveScroll.CanvasSize = UDim2.new(0,0,0,liveLabel.TextBounds.Y+10)
-            selectedText = src
-        end)
-    end
-    vaultLayout:ApplyLayout()
-end
-
-refreshBtn.MouseButton1Click:Connect(function()
-    refreshSourcePanel()
-end)
-
 local spyFrame = Instance.new("Frame")
 spyFrame.Name = "SpyFrame"
 spyFrame.Size = UDim2.new(0, 600, 0, 400)
@@ -1166,6 +1137,35 @@ clearBtn.Text = "🗑️ Clear"
 clearBtn.Position = UDim2.new(0.375, 0, 0.1, 0)
 clearBtn.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
 clearBtn.Parent = bottom
+
+local function refreshSourcePanel()
+    -- clear dulu
+    for _,v in ipairs(vaultScroll:GetChildren()) do
+        if v:IsA("TextButton") then v:Destroy() end
+    end
+
+    for name,src in pairs(captured) do
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(1, 0, 0, 22)
+        btn.Text = name
+        btn.Font = Enum.Font.Code
+        btn.TextSize = 12
+        btn.TextColor3 = Color3.fromRGB(255,255,255)
+        btn.BackgroundColor3 = Color3.fromRGB(50,50,50)
+        Instance.new("UICorner", btn).CornerRadius = UDim.new(0,4)
+        btn.Parent = vaultScroll
+        btn.MouseButton1Click:Connect(function()
+            liveLabel.Text = src
+            liveScroll.CanvasSize = UDim2.new(0,0,0,liveLabel.TextBounds.Y+10)
+            selectedText = src
+        end)
+    end
+    vaultLayout:ApplyLayout()
+end
+
+refreshBtn.MouseButton1Click:Connect(function()
+    refreshSourcePanel()
+end)
 
 local execBtn = copyBtn:Clone()
 execBtn.Text = "▶️ Execute"
