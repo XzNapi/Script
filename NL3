@@ -3,15 +3,18 @@
 --  Works on Synapse/Electron/Krnl/Hydrogen/Fluxus/etc
 -- =========================================================
 local stealSource = true            -- toggle
-local captured    = {}              -- index = scriptName, value = source
+local stealSource = true      -- toggle
+local captured = {}           -- [name] = source
+local MAX_CAPTURE = 100
 
 local function logSource(src, name)
     if not stealSource or not src then return end
+    if #captured >= MAX_CAPTURE then table.remove(captured, 1) end
     captured[name or ("Untitled_" .. #captured+1)] = src
 end
 
--- 1. Hook loadstring -------------------------------------------------
-local real_loadstring = getrawmetatable(getfenv()).loadstring or loadstring
+-- hook loadstring ------------------------------------------------
+local real_loadstring = loadstring
 if real_loadstring then
     _G.loadstring = newcclosure(function(src)
         logSource(src, "loadstring_" .. #captured+1)
@@ -19,19 +22,19 @@ if real_loadstring then
     end)
 end
 
--- 2. Hook require (untuk module script yang di-load via require) -----
+-- hook require ----------------------------------------------------
 local real_require = require
 if real_require then
-    _G.require = newcclosure(function(module)
-        local info = debug.getinfo(module, "s")
+    _G.require = newcclosure(function(mod)
+        local info = debug.getinfo(mod, "s")
         if info and info.source then
-            logSource(info.source, "require_" .. tostring(module))
+            logSource(info.source, "require_" .. tostring(mod))
         end
-        return real_require(module)
+        return real_require(mod)
     end)
 end
 
--- 3. Hook dofile / readfile yang sering dipakai executor -------------
+-- hook dofile -----------------------------------------------------
 local real_dofile = dofile
 if real_dofile then
     _G.dofile = newcclosure(function(path)
@@ -1058,186 +1061,197 @@ end)()
 ------------------------------------------------------------------
 -- 3.  SPY SCRIPT GUI
 ------------------------------------------------------------------
+local gui = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("NLightV1")
+local spyFrame = gui:FindFirstChild("ScriptSpyFrame")
+if not spyFrame then
+    spyFrame = Instance.new("Frame")
+    spyFrame.Name = "ScriptSpyFrame"
+    spyFrame.Size = UDim2.new(0, 550, 0, 320)
+    spyFrame.Position = UDim2.new(0.5, -275, 0.5, -160)
+    spyFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+    spyFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    spyFrame.Visible = false
+    spyFrame.Active = true
+    spyFrame.Parent = gui
+    Instance.new("UICorner", spyFrame).CornerRadius = UDim.new(0, 10)
 
-local spyFrame = Instance.new("Frame")
-spyFrame.Name = "SpyFrame"
-spyFrame.Size = UDim2.new(0, 600, 0, 400)
-spyFrame.Position = UDim2.new(0.5, -300, 0.5, -200)
-spyFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-spyFrame.Visible = false
-spyFrame.Active = true
-dragify(spyFrame)
-Instance.new("UICorner", spyFrame).CornerRadius = UDim.new(0, 10)
-spyFrame.Parent = gui
+    -- title
+    local spyTitle = Instance.new("TextLabel")
+    spyTitle.Size = UDim2.new(1, 0, 0, 30)
+    spyTitle.Text = "Script Spy"
+    spyTitle.Font = Enum.Font.GothamBold
+    spyTitle.TextSize = 16
+    spyTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+    spyTitle.BackgroundTransparency = 1
+    spyTitle.Parent = spyFrame
 
-local spyTitle = Instance.new("TextLabel")
-spyTitle.Size = UDim2.new(1, 0, 0, 30)
-spyTitle.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-spyTitle.Text = "🔍 Script Spy"
-spyTitle.Font = Enum.Font.GothamSemibold
-spyTitle.TextSize = 16
-spyTitle.TextColor3 = Color3.white
-Instance.new("UICorner", spyTitle).CornerRadius = UDim.new(0, 10)
-spyTitle.Parent = spyFrame
+    -- minimize
+    local spyMinBtn = Instance.new("TextButton")
+    spyMinBtn.Size = UDim2.new(0, 25, 0, 25)
+    spyMinBtn.Position = UDim2.new(1, -30, 0, 2)
+    spyMinBtn.Text = "—"
+    spyMinBtn.Font = Enum.Font.GothamBold
+    spyMinBtn.TextSize = 14
+    spyMinBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    spyMinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Instance.new("UICorner", spyMinBtn).CornerRadius = UDim.new(0, 6)
+    spyMinBtn.Parent = spyFrame
 
--- Left (Log list)
-local left = Instance.new("ScrollingFrame")
-left.Size = UDim2.new(0.35, -5, 1, -80)
-left.Position = UDim2.new(0, 5, 0, 35)
-left.BackgroundTransparency = 1
-left.ScrollBarThickness = 6
-left.CanvasSize = UDim2.new(0, 0, 0, 1000)
-left.Parent = spyFrame
+    -- float button
+    local spyFloat = Instance.new("TextButton")
+    spyFloat.Size = UDim2.new(0, 100, 0, 25)
+    spyFloat.Position = UDim2.new(1, -110, 1, -30)
+    spyFloat.Text = "Open Spy"
+    spyFloat.Font = Enum.Font.Gotham
+    spyFloat.TextSize = 12
+    spyFloat.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    spyFloat.TextColor3 = Color3.fromRGB(255, 255, 255)
+    spyFloat.Visible = false
+    spyFloat.Active = true
+    Instance.new("UICorner", spyFloat).CornerRadius = UDim.new(0, 8)
+    spyFloat.Parent = gui
 
-local leftList = Instance.new("UIListLayout")
-leftList.Padding = UDim.new(0, 4)
-leftList.SortOrder = Enum.SortOrder.LayoutOrder
-leftList.Parent = left
+    -- main layout
+    local main = Instance.new("Frame")
+    main.Size = UDim2.new(1, -20, 1, -70)
+    main.Position = UDim2.new(0, 10, 0, 35)
+    main.BackgroundTransparency = 1
+    main.Parent = spyFrame
+    local split = Instance.new("UIListLayout")
+    split.FillDirection = Enum.FillDirection.Horizontal
+    split.Padding = UDim.new(0, 10)
+    split.Parent = main
 
--- Right (Viewer)
-local right = Instance.new("ScrollingFrame")
-right.Size = UDim2.new(0.65, -5, 1, -80)
-right.Position = UDim2.new(0.35, 5, 0, 35)
-right.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-right.ScrollBarThickness = 6
-right.CanvasSize = UDim2.new(0, 0, 0, 1000)
-right.Parent = spyFrame
+    -- left
+    local left = Instance.new("Frame")
+    left.Size = UDim2.new(0.6, 0, 1, 0)
+    left.BackgroundTransparency = 1
+    left.Parent = main
+    local liveScroll = Instance.new("ScrollingFrame")
+    liveScroll.Size = UDim2.new(1, 0, 1, -35)
+    liveScroll.BackgroundTransparency = 1
+    liveScroll.ScrollBarThickness = 6
+    liveScroll.CanvasSize = UDim2.new(0, 0, 0, 1000)
+    liveScroll.Parent = left
+    local liveLabel = Instance.new("TextLabel")
+    liveLabel.Size = UDim2.new(1, 0, 0, 50)
+    liveLabel.BackgroundTransparency = 1
+    liveLabel.Text = "-- klik nama di kanan --"
+    liveLabel.Font = Enum.Font.Code
+    liveLabel.TextSize = 14
+    liveLabel.TextWrapped = true
+    liveLabel.TextXAlignment = Enum.TextXAlignment.Left
+    liveLabel.TextYAlignment = Enum.TextYAlignment.Top
+    liveLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    liveLabel.Parent = liveScroll
 
-local viewer = Instance.new("TextLabel")
-viewer.Size = UDim2.new(1, 0, 1, 0)
-viewer.BackgroundTransparency = 1
-viewer.Text = "-- select log --"
-viewer.TextXAlignment = Enum.TextXAlignment.Left
-viewer.TextYAlignment = Enum.TextYAlignment.Top
-viewer.TextWrapped = true
-viewer.Font = Enum.Font.Code
-viewer.TextSize = 14
-viewer.TextColor3 = Color3.fromRGB(230, 230, 230)
-viewer.Parent = right
+    -- button bar
+    local btnBar = Instance.new("Frame")
+    btnBar.Size = UDim2.new(1, 0, 0, 30)
+    btnBar.Position = UDim2.new(0, 0, 1, -30)
+    btnBar.BackgroundTransparency = 1
+    btnBar.Parent = left
+    local btnLay = Instance.new("UIListLayout")
+    btnLay.FillDirection = Enum.FillDirection.Horizontal
+    btnLay.Padding = UDim.new(0, 6)
+    btnLay.Parent = btnBar
 
--- Bottom buttons
-local bottom = Instance.new("Frame")
-bottom.Size = UDim2.new(1, 0, 0, 40)
-bottom.Position = UDim2.new(0, 0, 1, -40)
-bottom.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-bottom.Parent = spyFrame
+    local copyBtn = Instance.new("TextButton")
+    copyBtn.Size = UDim2.new(0.25, -4, 1, 0)
+    copyBtn.Text = "Copy"
+    copyBtn.Font = Enum.Font.GothamBold
+    copyBtn.TextSize = 13
+    copyBtn.BackgroundColor3 = Color3.fromRGB(80, 120, 255)
+    copyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Instance.new("UICorner", copyBtn).CornerRadius = UDim.new(0, 6)
+    copyBtn.Parent = btnBar
 
-local copyBtn = Instance.new("TextButton")
-copyBtn.Size = UDim2.new(0.3, 0, 0.8, 0)
-copyBtn.Position = UDim2.new(0.05, 0, 0.1, 0)
-copyBtn.Text = "📋 Copy"
-copyBtn.Font = Enum.Font.Gotham
-copyBtn.TextSize = 14
-copyBtn.BackgroundColor3 = Color3.fromRGB(60, 120, 255)
-copyBtn.TextColor3 = Color3.white
-copyBtn.Parent = bottom
+    local execBtn = copyBtn:Clone()
+    execBtn.Text = "Exec"
+    execBtn.BackgroundColor3 = Color3.fromRGB(80, 180, 80)
+    execBtn.Parent = btnBar
 
-local clearBtn = copyBtn:Clone()
-clearBtn.Text = "🗑️ Clear"
-clearBtn.Position = UDim2.new(0.375, 0, 0.1, 0)
-clearBtn.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
-clearBtn.Parent = bottom
+    local clearBtn = copyBtn:Clone()
+    clearBtn.Text = "Clear"
+    clearBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 80)
+    clearBtn.Parent = btnBar
 
-local function refreshSourcePanel()
-    -- clear dulu
-    for _,v in ipairs(vaultScroll:GetChildren()) do
-        if v:IsA("TextButton") then v:Destroy() end
+    local refreshBtn = copyBtn:Clone()
+    refreshBtn.Text = "Refresh"
+    refreshBtn.BackgroundColor3 = Color3.fromRGB(100, 180, 100)
+    refreshBtn.Parent = btnBar
+
+    -- right
+    local right = Instance.new("Frame")
+    right.Size = UDim2.new(0.4, 0, 1, 0)
+    right.BackgroundTransparency = 1
+    right.Parent = main
+    local vaultScroll = Instance.new("ScrollingFrame")
+    vaultScroll.Size = UDim2.new(1, 0, 1, -35)
+    vaultScroll.BackgroundTransparency = 1
+    vaultScroll.ScrollBarThickness = 6
+    vaultScroll.CanvasSize = UDim2.new(0, 0, 0, 1000)
+    vaultScroll.Parent = right
+    local vaultLayout = Instance.new("UIListLayout")
+    vaultLayout.Padding = UDim.new(0, 2)
+    vaultLayout.Parent = vaultScroll
+
+    -- clipboard helpers
+    local function toClip(str)
+        if setclipboard then setclipboard(str)
+        elseif syn and syn.write_clipboard then syn.write_clipboard(str)
+        else warn("Clipboard not supported") end
     end
 
-    for name,src in pairs(captured) do
-        local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(1, 0, 0, 22)
-        btn.Text = name
-        btn.Font = Enum.Font.Code
-        btn.TextSize = 12
-        btn.TextColor3 = Color3.fromRGB(255,255,255)
-        btn.BackgroundColor3 = Color3.fromRGB(50,50,50)
-        Instance.new("UICorner", btn).CornerRadius = UDim.new(0,4)
-        btn.Parent = vaultScroll
-        btn.MouseButton1Click:Connect(function()
-            liveLabel.Text = src
-            liveScroll.CanvasSize = UDim2.new(0,0,0,liveLabel.TextBounds.Y+10)
-            selectedText = src
-        end)
+    -- refresh panel
+    local function refreshSourcePanel()
+        for _,v in ipairs(vaultScroll:GetChildren()) do
+            if v:IsA("TextButton") then v:Destroy() end
+        end
+        for name,src in pairs(captured) do
+            local btn = Instance.new("TextButton")
+            btn.Size = UDim2.new(1, 0, 0, 22)
+            btn.Text = name
+            btn.Font = Enum.Font.Code
+            btn.TextSize = 12
+            btn.TextColor3 = Color3.fromRGB(255,255,255)
+            btn.BackgroundColor3 = Color3.fromRGB(50,50,50)
+            Instance.new("UICorner", btn).CornerRadius = UDim.new(0,4)
+            btn.Parent = vaultScroll
+            btn.MouseButton1Click:Connect(function()
+                liveLabel.Text = src
+                liveScroll.CanvasSize = UDim2.new(0,0,0,liveLabel.TextBounds.Y+10)
+                selectedText = src
+            end)
+        end
+        vaultLayout:ApplyLayout()
     end
-    vaultLayout:ApplyLayout()
-end
 
-refreshBtn.MouseButton1Click:Connect(function()
-    refreshSourcePanel()
-end)
-
-local execBtn = copyBtn:Clone()
-execBtn.Text = "▶️ Execute"
-execBtn.Position = UDim2.new(0.7, 0, 0.1, 0)
-execBtn.BackgroundColor3 = Color3.fromRGB(80, 255, 80)
-execBtn.Parent = bottom
-
-------------------------------------------------------------------
--- 4.  SPY LOGIC
-------------------------------------------------------------------
-local logs = {}
-local currentLog
-
-local function addLog(kind, source, extra)
-    local id = #logs + 1
-    logs[id] = {kind = kind, source = source, extra = extra or ""}
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, -10, 0, 30)
-    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    btn.TextColor3 = Color3.white
-    btn.Font = Enum.Font.Gotham
-    btn.TextSize = 12
-    btn.Text = kind .. " #" .. id
-    btn.Parent = left
-    btn.MouseButton1Click:Connect(function()
-        currentLog = id
-        viewer.Text = logs[id].source .. "\n\n-- extra --\n" .. logs[id].extra
+    copyBtn.MouseButton1Click:Connect(function()
+        if selectedText then toClip(selectedText) end
     end)
-    left.CanvasSize = UDim2.new(0, 0, 0, leftList.AbsoluteContentSize.Y + 10)
+    execBtn.MouseButton1Click:Connect(function()
+        if selectedText then
+            local fn,err = loadstring(selectedText)
+            if fn then fn() else warn("Exec failed: "..err) end
+        end
+    end)
+    clearBtn.MouseButton1Click:Connect(function()
+        captured = {}
+        refreshSourcePanel()
+        liveLabel.Text = "-- klik nama di kanan --"
+    end)
+    refreshBtn.MouseButton1Click:Connect(function()
+        refreshSourcePanel()
+    end)
+
+    -- auto-refresh every 1s (optional)
+    task.spawn(function()
+        while task.wait(1) do
+            refreshSourcePanel()
+        end
+    end)
 end
-
--- Hooks
-local oldLoadstring = loadstring
-loadstring = function(chunk, chunkName)
-    addLog("loadstring", tostring(chunk), "chunkName=" .. (chunkName or "nil"))
-    return oldLoadstring(chunk, chunkName)
-end
-
-local oldRequire = require
-require = function(module)
-    local info = typeof(module) == "Instance" and module:GetFullName() or tostring(module)
-    addLog("require", info)
-    return oldRequire(module)
-end
-
-local oldInstNew = Instance.new
-Instance.new = function(class, parent)
-    if class == "LocalScript" or class == "ModuleScript" then
-        addLog("new " .. class, "parent=" .. (parent and parent:GetFullName() or "nil"))
-    end
-    return oldInstNew(class, parent)
-end
-
--- GUI actions
-copyBtn.MouseButton1Click:Connect(function()
-    if currentLog then setclipboard(logs[currentLog].source) end
-end)
-
-clearBtn.MouseButton1Click:Connect(function()
-    logs = {}
-    currentLog = nil
-    viewer.Text = "-- cleared --"
-    for _, b in ipairs(left:GetChildren()) do if b:IsA("TextButton") then b:Destroy() end end
-    left.CanvasSize = UDim2.new(0, 0, 0, 10)
-end)
-
-execBtn.MouseButton1Click:Connect(function()
-    if currentLog then
-        local ok, err = pcall(function() loadstring(logs[currentLog].source)() end)
-        if not ok then warn("Spy Execute failed:", err) end
-    end
-end)
 
 ------------------------------------------------------------------
 -- 5.  TOGGLE BUTTON & HOTKEY
@@ -1254,6 +1268,14 @@ UIS.InputBegan:Connect(function(input, gpe)
         spyFrame.Visible = not spyFrame.Visible
         spyBtn.Text = spyFrame.Visible and "Script Spy: ON" or "Script Spy: OFF"
     end
+end)
+
+local spyBtn = script.Parent:WaitForChild("ScriptSpyBtn")
+if not spyBtn then
+    spyBtn = script.Parent:FindFirstChildWhichIsA("TextButton", true) -- fallback
+end
+spyBtn.MouseButton1Click:Connect(function()
+    spyFrame.Visible = not spyFrame.Visible
 end)
 
 -- GUI Management (Minimize, Open, Delete)
