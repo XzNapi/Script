@@ -616,11 +616,6 @@ end)
 -- =================================================================
 
 -- ==============================================================
--- ONE-LOG LIVE + VAULT  —  Script Spy (full drop-in)
--- ==============================================================
-
-
--- ==============================================================
 -- NLight V.1  –  Script Spy FIX (Live-Statis + Tombol Vault)
 -- ==============================================================
 
@@ -810,15 +805,26 @@ local function refreshVault()
 end
 
 -- push ke vault saja (live TIDAK di-update otomatis)
+local logCount = 0           -- hitung log
+local lastTime = 0           -- throttle waktu
+
 local function pushVault(method, remote, ...)
     if not spyEnabled then return end
+    -- throttle: maks 20 log/detik
+    local now = tick()
+    if now - lastTime < 0.05 then return end
+    lastTime = now
+
     local line  = string.format('game:GetService("ReplicatedStorage")["%s"]:%s(%s)', remote.Name, method, serialize({...}))
     local title = remote.Name .. " (" .. method .. ")"
     table.insert(vaultLogs, {title = title, line = line})
-    -- batasi jumlah log
-    if #vaultLogs > MAX_LOG then table.remove(vaultLogs, 1) end
+    logCount = logCount + 1
+
+    -- batasi 50 baris
+    if #vaultLogs > 50 then table.remove(vaultLogs, 1) end
     refreshVault()
 end
+
 
 -- hook remote
 local mt = getrawmetatable(game)
