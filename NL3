@@ -615,6 +615,249 @@ coroutine.wrap(function()
     end
 end)()
 
+-- =========================================================
+--  NLight – SpyScript Module
+-- =========================================================
+local Players       = game:GetService("Players")
+local UIS           = game:GetService("UserInputService")
+local HS            = game:GetService("HttpService")
+local LogService    = game:GetService("LogService")
+
+local LocalPlayer   = Players.LocalPlayer
+local gui           = LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("NLightV1")
+if not gui then warn("NLight GUI not found – run NLight first!") return end
+
+-- ----------------------------------------------------------
+--  GUI
+-- ----------------------------------------------------------
+local spyFrame = Instance.new("Frame")
+spyFrame.Name = "SpyFrame"
+spyFrame.Size = UDim2.new(0, 600, 0, 400)
+spyFrame.Position = UDim2.new(0.5, -300, 0.5, -200)
+spyFrame.BackgroundColor3 = Color3.fromRGB(30,30,30)
+spyFrame.Visible = false
+spyFrame.Active = true
+spyFrame.Parent = gui
+
+local corner = Instance.new("UICorner", spyFrame)
+corner.CornerRadius = UDim.new(0,10)
+
+-- Title
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1,0,0,30)
+title.BackgroundColor3 = Color3.fromRGB(45,45,45)
+title.Text = "🔍 Script Spy"
+title.Font = Enum.Font.GothamSemibold
+title.TextSize = 16
+title.TextColor3 = Color3.white
+corner:Clone().Parent = title
+title.Parent = spyFrame
+
+-- Split layout
+local left = Instance.new("ScrollingFrame")
+left.Size = UDim2.new(0.35, -5, 1, -80)
+left.Position = UDim2.new(0,5,0,35)
+left.BackgroundTransparency = 1
+left.ScrollBarThickness = 6
+left.CanvasSize = UDim2.new(0,0,0,1000)
+left.Parent = spyFrame
+
+local right = Instance.new("ScrollingFrame")
+right.Size = UDim2.new(0.65, -5, 1, -80)
+right.Position = UDim2.new(0.35,5,0,35)
+right.BackgroundColor3 = Color3.fromRGB(35,35,35)
+right.ScrollBarThickness = 6
+right.CanvasSize = UDim2.new(0,0,0,1000)
+right.Parent = spyFrame
+local rightCorner = Instance.new("UICorner", right)
+
+local viewer = Instance.new("TextLabel")
+viewer.Size = UDim2.new(1,0,1,0)
+viewer.BackgroundTransparency = 1
+viewer.Text = "-- select log --"
+viewer.TextXAlignment = Enum.TextXAlignment.Left
+viewer.TextYAlignment = Enum.TextYAlignment.Top
+viewer.TextWrapped = true
+viewer.Font = Enum.Font.Code
+viewer.TextSize = 14
+viewer.TextColor3 = Color3.fromRGB(230,230,230)
+viewer.Parent = right
+
+-- Bottom buttons
+local bottom = Instance.new("Frame")
+bottom.Size = UDim2.new(1,0,0,40)
+bottom.Position = UDim2.new(0,0,1,-40)
+bottom.BackgroundColor3 = Color3.fromRGB(20,20,20)
+bottom.Parent = spyFrame
+
+local copyBtn = Instance.new("TextButton")
+copyBtn.Size = UDim2.new(0.3,0,0.8,0)
+copyBtn.Position = UDim2.new(0.05,0,0.1,0)
+copyBtn.Text = "📋 Copy"
+copyBtn.Font = Enum.Font.Gotham
+copyBtn.TextSize = 14
+copyBtn.BackgroundColor3 = Color3.fromRGB(60,120,255)
+copyBtn.TextColor3 = Color3.white
+copyBtn.Parent = bottom
+
+local clearBtn = copyBtn:Clone()
+clearBtn.Text = "🗑️ Clear"
+clearBtn.Position = UDim2.new(0.375,0,0.1,0)
+clearBtn.BackgroundColor3 = Color3.fromRGB(255,80,80)
+clearBtn.Parent = bottom
+
+local execBtn = copyBtn:Clone()
+execBtn.Text = "▶️ Execute"
+execBtn.Position = UDim2.new(0.7,0,0.1,0)
+execBtn.BackgroundColor3 = Color3.fromRGB(80,255,80)
+execBtn.Parent = bottom
+
+-- Layout
+local leftList = Instance.new("UIListLayout")
+leftList.Padding = UDim.new(0,4)
+leftList.Parent = left
+
+-- ----------------------------------------------------------
+--  DATA
+-- ----------------------------------------------------------
+local logs = {}
+local currentLog = nil
+
+-- ----------------------------------------------------------
+--  UTIL
+-- ----------------------------------------------------------
+local function addLog(kind, source, extra)
+    local id = #logs + 1
+    logs[id] = {
+        kind   = kind,
+        source = source,
+        extra  = extra or ""
+    }
+    -- create button
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1,-10,0,30)
+    btn.BackgroundColor3 = Color3.fromRGB(50,50,50)
+    btn.TextColor3 = Color3.white
+    btn.Font = Enum.Font.Gotham
+    btn.TextSize = 12
+    btn.Text = kind .. " #" .. id
+    btn.Parent = left
+    btn.MouseButton1Click:Connect(function()
+        currentLog = id
+        viewer.Text = logs[id].source .. "\n\n-- extra --\n" .. logs[id].extra
+    end)
+    left.CanvasSize = UDim2.new(0,0,0, leftList.AbsoluteContentSize.Y + 10)
+end
+
+-- ----------------------------------------------------------
+--  HOOKS
+-- ----------------------------------------------------------
+local oldLoadstring = loadstring
+local oldRequire   = require
+local oldGetGc     = getgc or function() return {} end
+local oldGetScripts= getscripts or function() return {} end
+
+-- loadstring
+loadstring = function(chunk, chunkName)
+    addLog("loadstring", tostring(chunk), "chunkName=" .. (chunkName or "nil"))
+    return oldLoadstring(chunk, chunkName)
+end
+
+-- require
+require = function(module)
+    local info = typeof(module) == "Instance" and module:GetFullName() or tostring(module)
+    addLog("require", info)
+    return oldRequire(module)
+end
+
+-- getfenv / setfenv
+if getfenv then
+    local oldGet = getfenv
+    getfenv = function(...)
+        local stack = debug.traceback(2)
+        addLog("getfenv", stack:match("(%S+%.lua:%d+)") or stack)
+        return oldGet(...)
+    end
+end
+if setfenv then
+    local oldSet = setfenv
+    setfenv = function(...)
+        local stack = debug.traceback(2)
+        addLog("setfenv", stack:match("(%S+%.lua:%d+)") or stack)
+        return oldSet(...)
+    end
+end
+
+-- getgc / getscripts
+_G.getgc = function(...)
+    local res = oldGetGc(...)
+    addLog("getgc", "called", "count=" .. tostring(#res))
+    return res
+end
+_G.getscripts = function(...)
+    local res = oldGetScripts(...)
+    addLog("getscripts", "called", "count=" .. tostring(#res))
+    return res
+end
+
+-- new LocalScript / ModuleScript
+local oldInstNew = Instance.new
+Instance.new = function(class, parent)
+    if class == "LocalScript" or class == "ModuleScript" then
+        addLog("new " .. class, "parent=" .. (parent and parent:GetFullName() or "nil"))
+    end
+    return oldInstNew(class, parent)
+end
+
+-- ----------------------------------------------------------
+--  GUI ACTIONS
+-- ----------------------------------------------------------
+copyBtn.MouseButton1Click:Connect(function()
+    if not currentLog then return end
+    setclipboard(logs[currentLog].source)
+end)
+
+clearBtn.MouseButton1Click:Connect(function()
+    logs = {}
+    currentLog = nil
+    viewer.Text = "-- cleared --"
+    for _,b in ipairs(left:GetChildren()) do if b:IsA("TextButton") then b:Destroy() end end
+    left.CanvasSize = UDim2.new(0,0,0,10)
+end)
+
+execBtn.MouseButton1Click:Connect(function()
+    if not currentLog then return end
+    local ok, err = pcall(function()
+        loadstring(logs[currentLog].source)()
+    end)
+    if not ok then warn("Spy Execute failed: " .. err) end
+end)
+
+-- ----------------------------------------------------------
+--  TOGGLE KEY
+-- ----------------------------------------------------------
+local spyBtn = script.Parent:FindFirstChild("createButton") and script.Parent:createButton("Script Spy: OFF") or nil
+if not spyBtn then
+    spyBtn = Instance.new("TextButton")
+    spyBtn.Size = UDim2.new(1,0,0,35)
+    spyBtn.Text = "Script Spy: OFF"
+    spyBtn.Font = Enum.Font.Gotham
+    spyBtn.TextSize = 16
+    spyBtn.BackgroundColor3 = Color3.fromRGB(60,60,60)
+    spyBtn.TextColor3 = Color3.white
+    Instance.new("UICorner", spyBtn).CornerRadius = UDim.new(0,8)
+    spyBtn.Parent = gui:FindFirstChild("scroll") or gui
+end
+
+spyBtn.MouseButton1Click:Connect(function()
+    spyFrame.Visible = not spyFrame.Visible
+    spyBtn.Text = spyFrame.Visible and "Script Spy: ON" or "Script Spy: OFF"
+end)
+
+-- ----------------------------------------------------------
+print("NLight SpyScript loaded – press 'Script Spy' button or RightShift to toggle.")
+
+
 -- ----------------------------------------------------------
 --  Minimize / Restore GUI utama
 -- ----------------------------------------------------------
