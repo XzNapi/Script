@@ -755,12 +755,13 @@ local vaultLayout = Instance.new("UIListLayout", vaultScroll)
 vaultLayout.Padding = UDim.new(0, 2)
 
 -- ==============================================================
--- LOGIC (freeze-proof)
+-- Script Spy – anti-freeze (vault-only, throttled, limited)
 -- ==============================================================
 
-local spyEnabled = false
-local vaultLogs  = {}
-local MAX_LOG    = 50
+local spyEnabled   = false
+local vaultLogs    = {}   -- {title, line}
+local MAX_LOG      = 50
+local lastPush     = 0    -- throttle tick
 local selectedText = nil
 
 local function serialize(args)
@@ -778,7 +779,7 @@ local function serialize(args)
     return table.concat(t, ", ")
 end
 
--- render tombol log di vault
+-- render tombol log (vault)
 local function refreshVault()
     for _, v in ipairs(vaultScroll:GetChildren()) do
         if v:IsA("TextButton") then v:Destroy() end
@@ -793,40 +794,25 @@ local function refreshVault()
         btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
         Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
         btn.Parent = vaultScroll
-
-        btn.MouseButton1Click:Connect(function()
-            liveLabel.Text = data.line
-            liveScroll.CanvasSize = UDim2.new(0, 0, 0, liveLabel.AbsoluteSize.Y + 10)
-            selectedText = data.line
-        end)
     end
     vaultLayout:ApplyLayout()
-    vaultScroll.CanvasSize = UDim2.new(0, 0, 0, vaultLayout.AbsoluteContentSize.Y + 10)
 end
 
--- push ke vault saja (live TIDAK di-update otomatis)
-local logCount = 0           -- hitung log
-local lastTime = 0           -- throttle waktu
-
+-- push ke vault (throttled)
 local function pushVault(method, remote, ...)
     if not spyEnabled then return end
-    -- throttle: maks 20 log/detik
     local now = tick()
-    if now - lastTime < 0.05 then return end
-    lastTime = now
+    if now - lastPush < 0.1 then return end -- jeda 0,1 detik
+    lastPush = now
 
     local line  = string.format('game:GetService("ReplicatedStorage")["%s"]:%s(%s)', remote.Name, method, serialize({...}))
     local title = remote.Name .. " (" .. method .. ")"
     table.insert(vaultLogs, {title = title, line = line})
-    logCount = logCount + 1
-
-    -- batasi 50 baris
-    if #vaultLogs > 50 then table.remove(vaultLogs, 1) end
+    if #vaultLogs > MAX_LOG then table.remove(vaultLogs, 1) end
     refreshVault()
 end
 
-
--- hook remote
+-- hook remote (cepat tetapi jeda di pushVault)
 local mt = getrawmetatable(game)
 local oldNamecall = mt.__namecall
 setreadonly(mt, false)
@@ -839,7 +825,7 @@ mt.__namecall = newcclosure(function(self, ...)
 end)
 setreadonly(mt, true)
 
--- tombol toggle
+-- toggle tombol
 local spyBtn = createButton("Script Spy: OFF")
 spyBtn.MouseButton1Click:Connect(function()
     spyEnabled = not spyEnabled
@@ -862,8 +848,6 @@ end)
 clearBtn.MouseButton1Click:Connect(function()
     vaultLogs = {}
     refreshVault()
-    liveLabel.Text = "-- klik log di kanan --"
-    liveScroll.CanvasSize = UDim2.new(0, 0, 0, liveLabel.AbsoluteSize.Y + 10)
 end)
 
 -- copy / exec
@@ -873,11 +857,13 @@ local function toClip(str)
     else warn("Clipboard tidak tersedia") end
 end
 copyBtn.MouseButton1Click:Connect(function()
-    if selectedText then toClip(selectedText) end
+    if liveLabel.Text ~= "-- klik log di kanan --" then
+        toClip(liveLabel.Text)
+    end
 end)
 execBtn.MouseButton1Click:Connect(function()
-    if selectedText then
-        local fn, err = loadstring(selectedText)
+    if liveLabel.Text ~= "-- klik log di kanan --" then
+        local fn, err = loadstring(liveLabel.Text)
         if fn then fn() else warn("Exec gagal: "..err) end
     end
 end)
