@@ -770,8 +770,6 @@ UIS.InputBegan:Connect(function(input, gpe)
     end
 end)
 
-print("NLight V.1 + FULL SpyScript loaded – RightShift or button to toggle GUI.")
-
 -- ----------------------------------------------------------
 --  Minimize / Restore GUI utama
 -- ----------------------------------------------------------
@@ -785,25 +783,31 @@ minimizedBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 minimizedBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 minimizedBtn.Visible = false
 minimizedBtn.Active = true
-minimizedBtn.Draggable = true
+dragify(minimizedBtn)
 Instance.new("UICorner", minimizedBtn).CornerRadius = UDim.new(0, 10)
 minimizedBtn.Parent = gui
 
+-- Minimize
 minimize.MouseButton1Click:Connect(function()
     frame.Visible = false
     minimizedBtn.Visible = true
-    speedFrame.Visible = false
-    tpFrame.Visible = false
-    pumpFrame.Visible = false
-    waypointFrame.Visible = false
-    spyFrame.Visible = false
+    -- Sembunyikan semua sub-frame
+    speedFrame.Visible   = false
+    tpFrame.Visible      = false
+    pumpFrame.Visible    = false
+    waypointFrame.Visible= false
+    spyFrame.Visible     = false
 end)
 
+-- Restore
 minimizedBtn.MouseButton1Click:Connect(function()
     frame.Visible = true
     minimizedBtn.Visible = false
 end)
 
+-- Close & destroy
 delete.MouseButton1Click:Connect(function()
     gui:Destroy()
 end)
+
+print("NLight V.1 + FULL SpyScript loaded – RightShift or button to toggle GUI.")
