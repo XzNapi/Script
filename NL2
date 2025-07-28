@@ -640,6 +640,8 @@ spyFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 spyFrame.Visible = false
 spyFrame.Active = true
 spyFrame.Draggable = true
+spyFrame.Parent = gui
+spyFrame.Visible = spyEnabled
 Instance.new("UICorner", spyFrame).CornerRadius = UDim.new(0, 10)
 
 local spyTitle = Instance.new("TextLabel")
