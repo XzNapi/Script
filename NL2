@@ -616,22 +616,34 @@ end)
 -- =================================================================
 
 -- ==============================================================
--- NLight V.1  –  Script Spy FIX (Live-Statis + Tombol Vault)
+-- Script Spy FIX (Live-Statis + Tombol Vault)
 -- ==============================================================
 
-local Players = game:GetService("Players")
-local UIS = game:GetService("UserInputService")
-local RS  = game:GetService("RunService")
-local LocalPlayer = Players.LocalPlayer
+-- JANGAN deklarasikan ulang layanan atau gui, pakai yang sudah ada
+local spyEnabled = false
+local vaultLogs = {}
+local MAX_LOG = 50
+local selectedText = nil
 
-local gui = LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("NLightV1") or Instance.new("ScreenGui", LocalPlayer:WaitForChild("PlayerGui"))
-gui.Name = "NLightV1"
+-- Fungsi serialisasi argumen
+local function serialize(args)
+    local t = {}
+    for _, v in ipairs(args) do
+        local typ = typeof(v)
+        if typ == "Instance" then
+            t[#t+1] = 'game:FindFirstChild("'..v:GetFullName()..'", true)'
+        elseif typ == "string" then
+            t[#t+1] = '"'..v:gsub('"', '\\"')..'"'
+        elseif typ == "CFrame" or typ == "Vector3" then
+            t[#t+1] = "CFrame.new"..tostring(v)
+        else
+            t[#t+1] = tostring(v)
+        end
+    end
+    return table.concat(t, ", ")
+end
 
--- ==============================================================
--- GUI FRAME
--- ==============================================================
-
--- Main Window
+-- GUI utama spy
 local spyFrame = Instance.new("Frame")
 spyFrame.Size = UDim2.new(0, 550, 0, 320)
 spyFrame.Position = UDim2.new(0.5, -275, 0.5, -160)
@@ -652,8 +664,8 @@ spyTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
 spyTitle.BackgroundTransparency = 1
 spyTitle.Parent = spyFrame
 
--- Minimize / Float
-local spyMinBtn = Instance.new("TextButton", spyFrame)
+-- Minimize button
+local spyMinBtn = Instance.new("TextButton")
 spyMinBtn.Size = UDim2.new(0, 25, 0, 25)
 spyMinBtn.Position = UDim2.new(1, -30, 0, 2)
 spyMinBtn.Text = "—"
@@ -662,8 +674,10 @@ spyMinBtn.TextSize = 14
 spyMinBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 spyMinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 Instance.new("UICorner", spyMinBtn).CornerRadius = UDim.new(0, 6)
+spyMinBtn.Parent = spyFrame
 
-local spyFloat = Instance.new("TextButton", gui)
+-- Float button
+local spyFloat = Instance.new("TextButton")
 spyFloat.Size = UDim2.new(0, 100, 0, 25)
 spyFloat.Position = UDim2.new(1, -110, 1, -30)
 spyFloat.Text = "Open Spy"
@@ -675,30 +689,32 @@ spyFloat.Visible = false
 spyFloat.Active = true
 spyFloat.Draggable = true
 Instance.new("UICorner", spyFloat).CornerRadius = UDim.new(0, 8)
+spyFloat.Parent = gui
 
--- Kontainer split
-local main = Instance.new("Frame", spyFrame)
+-- Layout utama
+local main = Instance.new("Frame")
 main.Size = UDim2.new(1, -20, 1, -70)
 main.Position = UDim2.new(0, 10, 0, 35)
 main.BackgroundTransparency = 1
+main.Parent = spyFrame
 
-local split = Instance.new("UIListLayout", main)
+local split = Instance.new("UIListLayout")
 split.FillDirection = Enum.FillDirection.Horizontal
 split.Padding = UDim.new(0, 10)
+split.Parent = main
 
--- >>> Live Panel (statis)
-local left = Instance.new("Frame", main)
+-- Left panel
+local left = Instance.new("Frame")
 left.Size = UDim2.new(0.6, 0, 1, 0)
 left.BackgroundTransparency = 1
+left.Parent = main
 
-local liveScroll = Instance.new("ScrollingFrame", left)
+local liveScroll = Instance.new("ScrollingFrame")
 liveScroll.Size = UDim2.new(1, 0, 1, -35)
 liveScroll.BackgroundTransparency = 1
 liveScroll.ScrollBarThickness = 6
 liveScroll.CanvasSize = UDim2.new(0, 0, 0, 1000)
-
-local liveLayout = Instance.new("UIListLayout", liveScroll)
-liveLayout.Padding = UDim.new(0, 2)
+liveScroll.Parent = left
 
 local liveLabel = Instance.new("TextLabel")
 liveLabel.Size = UDim2.new(1, 0, 0, 50)
@@ -712,16 +728,19 @@ liveLabel.TextYAlignment = Enum.TextYAlignment.Top
 liveLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 liveLabel.Parent = liveScroll
 
--- tombol bar live
-local btnBar = Instance.new("Frame", left)
+-- Button bar
+local btnBar = Instance.new("Frame")
 btnBar.Size = UDim2.new(1, 0, 0, 30)
 btnBar.Position = UDim2.new(0, 0, 1, -30)
 btnBar.BackgroundTransparency = 1
-local btnLay = Instance.new("UIListLayout", btnBar)
+btnBar.Parent = left
+
+local btnLay = Instance.new("UIListLayout")
 btnLay.FillDirection = Enum.FillDirection.Horizontal
 btnLay.Padding = UDim.new(0, 6)
+btnLay.Parent = btnBar
 
-local copyBtn = Instance.new("TextButton", btnBar)
+local copyBtn = Instance.new("TextButton")
 copyBtn.Size = UDim2.new(0.33, -4, 1, 0)
 copyBtn.Text = "Copy"
 copyBtn.Font = Enum.Font.GothamBold
@@ -729,6 +748,7 @@ copyBtn.TextSize = 13
 copyBtn.BackgroundColor3 = Color3.fromRGB(80, 120, 255)
 copyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 Instance.new("UICorner", copyBtn).CornerRadius = UDim.new(0, 6)
+copyBtn.Parent = btnBar
 
 local execBtn = copyBtn:Clone()
 execBtn.Text = "Exec"
@@ -740,45 +760,24 @@ clearBtn.Text = "Clear"
 clearBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 80)
 clearBtn.Parent = btnBar
 
--- >>> Vault Panel
-local right = Instance.new("Frame", main)
+-- Right panel
+local right = Instance.new("Frame")
 right.Size = UDim2.new(0.4, 0, 1, 0)
 right.BackgroundTransparency = 1
+right.Parent = main
 
-local vaultScroll = Instance.new("ScrollingFrame", right)
+local vaultScroll = Instance.new("ScrollingFrame")
 vaultScroll.Size = UDim2.new(1, 0, 1, -35)
 vaultScroll.BackgroundTransparency = 1
 vaultScroll.ScrollBarThickness = 6
 vaultScroll.CanvasSize = UDim2.new(0, 0, 0, 1000)
+vaultScroll.Parent = right
 
-local vaultLayout = Instance.new("UIListLayout", vaultScroll)
+local vaultLayout = Instance.new("UIListLayout")
 vaultLayout.Padding = UDim.new(0, 2)
+vaultLayout.Parent = vaultScroll
 
---- ==============================================================
--- SPY TANPA HOOK – DETEKSI INTERAKSI TOMBOL GUI
--- ==============================================================
-
-local spyEnabled   = false
-local vaultLogs    = {}
-local MAX_LOG      = 50
-local selectedText = nil
-
-local function serialize(args)
-    local t = {}
-    for _, v in ipairs(args) do
-        local typ = typeof(v)
-        if typ == "Instance" then
-            t[#t+1] = 'game:FindFirstChild("'..v:GetFullName()..'", true)'
-        elseif typ == "string" then
-            t[#t+1] = '"'..v:gsub('"', '\\"')..'"'
-        elseif typ == "CFrame" or typ == "Vector3" then
-            t[#t+1] = "CFrame.new"..tostring(v)
-        else t[#t+1] = tostring(v) end
-    end
-    return table.concat(t, ", ")
-end
-
--- render tombol log ke vault
+-- Refresh vault
 local function refreshVault()
     for _, v in ipairs(vaultScroll:GetChildren()) do
         if v:IsA("TextButton") then v:Destroy() end
@@ -803,31 +802,7 @@ local function refreshVault()
     vaultLayout:ApplyLayout()
 end
 
--- fungsi bantuan untuk memantau RemoteEvent/RemoteFunction
-local function createSpyButton(name, remote, method, ...)
-    local btn = createButton(name)
-    btn.MouseButton1Click:Connect(function()
-        if not spyEnabled then return end
-        local args = {...}  -- capture argument saat klik
-        local line  = string.format('game:GetService("ReplicatedStorage")["%s"]:%s(%s)',
-                                    remote.Name, method, serialize(args))
-        local title = remote.Name .. " (" .. method .. ")"
-        table.insert(vaultLogs, {title = title, line = line})
-        if #vaultLogs > MAX_LOG then table.remove(vaultLogs, 1) end
-        refreshVault()
-    end)
-    return btn
-end
-
--- contoh: pasang tombol “Tombol 1” yang saat diklik memantau RemoteEvent “ClickEgg”
--- (ganti nama & remote sesuai game kamu)
-local eggBtn = createSpyButton("Tombol 1", game:GetService("ReplicatedStorage"):WaitForChild("ClickEgg"), "FireServer", 1)
--- tambahkan lebih banyak tombol sesuai kebutuhan
-
--- ==============================================================
--- TOGGLE & UI
--- ==============================================================
-
+-- Spy button (gunakan createButton dari GUI utama)
 local spyBtn = createButton("Script Spy: OFF")
 spyBtn.MouseButton1Click:Connect(function()
     spyEnabled = not spyEnabled
@@ -836,7 +811,7 @@ spyBtn.MouseButton1Click:Connect(function()
     spyFloat.Visible = false
 end)
 
--- minimize / restore
+-- Minimize / restore
 spyMinBtn.MouseButton1Click:Connect(function()
     spyFrame.Visible = false
     spyFloat.Visible = true
@@ -846,32 +821,62 @@ spyFloat.MouseButton1Click:Connect(function()
     spyFloat.Visible = false
 end)
 
--- clear
+-- Clear
 clearBtn.MouseButton1Click:Connect(function()
     vaultLogs = {}
     refreshVault()
     liveLabel.Text = "-- klik log di kanan --"
 end)
 
--- copy / exec
+-- Copy / Exec
 local function toClip(str)
-    if setclipboard then setclipboard(str)
-    elseif syn and syn.write_clipboard then syn.write_clipboard(str)
-    else warn("Clipboard tidak tersedia") end
+    if setclipboard then
+        setclipboard(str)
+    elseif syn and syn.write_clipboard then
+        syn.write_clipboard(str)
+    else
+        warn("Clipboard tidak tersedia")
+    end
 end
+
 copyBtn.MouseButton1Click:Connect(function()
     if selectedText then toClip(selectedText) end
 end)
+
 execBtn.MouseButton1Click:Connect(function()
     if selectedText then
         local fn, err = loadstring(selectedText)
-        if fn then fn() else warn("Exec gagal: "..err) end
+        if fn then
+            fn()
+        else
+            warn("Exec gagal: "..err)
+        end
     end
 end)
 
 -- ==============================================================
--- END OF FILE
+-- Contoh tombol tambahan untuk remote spy
 -- ==============================================================
+
+local function createSpyButton(name, remote, method, ...)
+    local args = {...}
+    local btn = createButton(name)
+    btn.MouseButton1Click:Connect(function()
+        if not spyEnabled then return end
+        local line = string.format('game:GetService("ReplicatedStorage")["%s"]:%s(%s)',
+                                    remote.Name, method, serialize(args))
+        local title = remote.Name .. " (" .. method .. ")"
+        table.insert(vaultLogs, {title = title, line = line})
+        if #vaultLogs > MAX_LOG then table.remove(vaultLogs, 1) end
+        refreshVault()
+    end)
+end
+
+-- Contoh: ganti sesuai nama remote di game Anda
+pcall(function()
+    createSpyButton("Collect Egg", game:GetService("ReplicatedStorage"):WaitForChild("ClickEgg"), "FireServer", 1)
+end)
+
 
 -- Auto Pump
 local autoPumpEnabled = false
