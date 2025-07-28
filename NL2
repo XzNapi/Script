@@ -619,17 +619,25 @@ end)
 -- ONE-LOG LIVE + VAULT  —  Script Spy (full drop-in)
 -- ==============================================================
 
+
+-- ==============================================================
+-- NLight V.1  –  Script Spy FIX (Live-Statis + Tombol Vault)
+-- ==============================================================
+
 local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+local RS  = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
-local gui = script.Parent or LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("NLightV1") or Instance.new("ScreenGui", LocalPlayer:WaitForChild("PlayerGui"))
+
+local gui = LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("NLightV1") or Instance.new("ScreenGui", LocalPlayer:WaitForChild("PlayerGui"))
 gui.Name = "NLightV1"
 
 -- ==============================================================
 -- GUI FRAME
 -- ==============================================================
 
+-- Main Window
 local spyFrame = Instance.new("Frame")
-spyFrame.Name = "SpyFrame"
 spyFrame.Size = UDim2.new(0, 550, 0, 320)
 spyFrame.Position = UDim2.new(0.5, -275, 0.5, -160)
 spyFrame.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -640,7 +648,6 @@ spyFrame.Draggable = true
 Instance.new("UICorner", spyFrame).CornerRadius = UDim.new(0, 10)
 spyFrame.Parent = gui
 
--- judul
 local spyTitle = Instance.new("TextLabel")
 spyTitle.Size = UDim2.new(1, 0, 0, 30)
 spyTitle.Text = "Script Spy"
@@ -650,8 +657,8 @@ spyTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
 spyTitle.BackgroundTransparency = 1
 spyTitle.Parent = spyFrame
 
--- minimize khusus spy
-local spyMinBtn = Instance.new("TextButton")
+-- Minimize / Float
+local spyMinBtn = Instance.new("TextButton", spyFrame)
 spyMinBtn.Size = UDim2.new(0, 25, 0, 25)
 spyMinBtn.Position = UDim2.new(1, -30, 0, 2)
 spyMinBtn.Text = "—"
@@ -660,9 +667,8 @@ spyMinBtn.TextSize = 14
 spyMinBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 spyMinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 Instance.new("UICorner", spyMinBtn).CornerRadius = UDim.new(0, 6)
-spyMinBtn.Parent = spyFrame
 
-local spyFloat = Instance.new("TextButton")
+local spyFloat = Instance.new("TextButton", gui)
 spyFloat.Size = UDim2.new(0, 100, 0, 25)
 spyFloat.Position = UDim2.new(1, -110, 1, -30)
 spyFloat.Text = "Open Spy"
@@ -674,51 +680,53 @@ spyFloat.Visible = false
 spyFloat.Active = true
 spyFloat.Draggable = true
 Instance.new("UICorner", spyFloat).CornerRadius = UDim.new(0, 8)
-spyFloat.Parent = gui
 
--- kontainer split
-local main = Instance.new("Frame")
+-- Kontainer split
+local main = Instance.new("Frame", spyFrame)
 main.Size = UDim2.new(1, -20, 1, -70)
 main.Position = UDim2.new(0, 10, 0, 35)
 main.BackgroundTransparency = 1
-main.Parent = spyFrame
 
 local split = Instance.new("UIListLayout", main)
 split.FillDirection = Enum.FillDirection.Horizontal
 split.Padding = UDim.new(0, 10)
 
--- >>> kiri: live log (hanya 1 baris)
-local left = Instance.new("Frame")
+-- >>> Live Panel (statis)
+local left = Instance.new("Frame", main)
 left.Size = UDim2.new(0.6, 0, 1, 0)
 left.BackgroundTransparency = 1
-left.Parent = main
 
-local liveScroll = Instance.new("ScrollingFrame")
+local liveScroll = Instance.new("ScrollingFrame", left)
 liveScroll.Size = UDim2.new(1, 0, 1, -35)
 liveScroll.BackgroundTransparency = 1
 liveScroll.ScrollBarThickness = 6
 liveScroll.CanvasSize = UDim2.new(0, 0, 0, 1000)
-liveScroll.Parent = left
 
 local liveLayout = Instance.new("UIListLayout", liveScroll)
 liveLayout.Padding = UDim.new(0, 2)
 
-local livePad = Instance.new("UIPadding", liveScroll)
-livePad.PaddingTop = UDim.new(0, 4)
-livePad.PaddingLeft = UDim.new(0, 4)
-livePad.PaddingRight = UDim.new(0, 4)
+local liveLabel = Instance.new("TextLabel")
+liveLabel.Size = UDim2.new(1, 0, 0, 50)
+liveLabel.BackgroundTransparency = 1
+liveLabel.Text = "-- klik log di kanan --"
+liveLabel.Font = Enum.Font.Code
+liveLabel.TextSize = 14
+liveLabel.TextWrapped = true
+liveLabel.TextXAlignment = Enum.TextXAlignment.Left
+liveLabel.TextYAlignment = Enum.TextYAlignment.Top
+liveLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+liveLabel.Parent = liveScroll
 
-local btnBar = Instance.new("Frame")
+-- tombol bar live
+local btnBar = Instance.new("Frame", left)
 btnBar.Size = UDim2.new(1, 0, 0, 30)
 btnBar.Position = UDim2.new(0, 0, 1, -30)
 btnBar.BackgroundTransparency = 1
-btnBar.Parent = left
-
 local btnLay = Instance.new("UIListLayout", btnBar)
 btnLay.FillDirection = Enum.FillDirection.Horizontal
 btnLay.Padding = UDim.new(0, 6)
 
-local copyBtn = Instance.new("TextButton")
+local copyBtn = Instance.new("TextButton", btnBar)
 copyBtn.Size = UDim2.new(0.33, -4, 1, 0)
 copyBtn.Text = "Copy"
 copyBtn.Font = Enum.Font.GothamBold
@@ -726,7 +734,6 @@ copyBtn.TextSize = 13
 copyBtn.BackgroundColor3 = Color3.fromRGB(80, 120, 255)
 copyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 Instance.new("UICorner", copyBtn).CornerRadius = UDim.new(0, 6)
-copyBtn.Parent = btnBar
 
 local execBtn = copyBtn:Clone()
 execBtn.Text = "Exec"
@@ -738,57 +745,29 @@ clearBtn.Text = "Clear"
 clearBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 80)
 clearBtn.Parent = btnBar
 
--- >>> kanan: vault
-local right = Instance.new("Frame")
+-- >>> Vault Panel
+local right = Instance.new("Frame", main)
 right.Size = UDim2.new(0.4, 0, 1, 0)
 right.BackgroundTransparency = 1
-right.Parent = main
 
-local vaultScroll = Instance.new("ScrollingFrame")
+local vaultScroll = Instance.new("ScrollingFrame", right)
 vaultScroll.Size = UDim2.new(1, 0, 1, -35)
 vaultScroll.BackgroundTransparency = 1
 vaultScroll.ScrollBarThickness = 6
 vaultScroll.CanvasSize = UDim2.new(0, 0, 0, 1000)
-vaultScroll.Parent = right
 
 local vaultLayout = Instance.new("UIListLayout", vaultScroll)
 vaultLayout.Padding = UDim.new(0, 2)
 
-local vaultPad = Instance.new("UIPadding", vaultScroll)
-vaultPad.PaddingTop = UDim.new(0, 4)
-vaultPad.PaddingLeft = UDim.new(0, 4)
-vaultPad.PaddingRight = UDim.new(0, 4)
-
-local vaultTitle = Instance.new("TextLabel")
-vaultTitle.Size = UDim2.new(1, 0, 0, 20)
-vaultTitle.Text = "Saved Logs"
-vaultTitle.Font = Enum.Font.Gotham
-vaultTitle.TextSize = 13
-vaultTitle.TextColor3 = Color3.fromRGB(180, 180, 180)
-vaultTitle.BackgroundTransparency = 1
-vaultTitle.Parent = right
-
-local saveBtn = Instance.new("TextButton")
-saveBtn.Size = UDim2.new(1, 0, 0, 25)
-saveBtn.Position = UDim2.new(0, 0, 1, -25)
-saveBtn.Text = "Save"
-saveBtn.Font = Enum.Font.GothamBold
-saveBtn.TextSize = 12
-saveBtn.BackgroundColor3 = Color3.fromRGB(120, 120, 255)
-saveBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-Instance.new("UICorner", saveBtn).CornerRadius = UDim.new(0, 6)
-saveBtn.Parent = right
-
 -- ==============================================================
--- LIVE PANEL STATIS + TOMBOL LOG
+-- LOGIC (freeze-proof)
 -- ==============================================================
 
-local spyEnabled   = false
-local vaultLogs    = {}   -- {title, line}
-local liveLabel    = nil  -- label tunggal live
+local spyEnabled = false
+local vaultLogs  = {}
+local MAX_LOG    = 50
 local selectedText = nil
 
--- util serialize
 local function serialize(args)
     local t = {}
     for _, v in ipairs(args) do
@@ -817,25 +796,12 @@ local function refreshVault()
         btn.TextSize = 12
         btn.TextColor3 = Color3.fromRGB(255, 255, 255)
         btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-        btn.BackgroundTransparency = 0
         Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
         btn.Parent = vaultScroll
 
         btn.MouseButton1Click:Connect(function()
-            if liveLabel then liveLabel:Destroy() end
-            liveLabel = Instance.new("TextLabel")
-            liveLabel.Size = UDim2.new(1, 0, 0, 50)       -- tinggi lebih besar
-            liveLabel.BackgroundTransparency = 1
             liveLabel.Text = data.line
-            liveLabel.Font = Enum.Font.Code
-            liveLabel.TextSize = 14                          -- lebih besar
-            liveLabel.TextWrapped = true                     -- wrap agar tidak ke samping
-            liveLabel.TextXAlignment = Enum.TextXAlignment.Left
-            liveLabel.TextYAlignment = Enum.TextYAlignment.Top
-            liveLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-            liveLabel.Parent = liveScroll
-            liveLayout:ApplyLayout()
-            liveScroll.CanvasSize = UDim2.new(0, 0, 0, liveLayout.AbsoluteContentSize.Y + 10)
+            liveScroll.CanvasSize = UDim2.new(0, 0, 0, liveLabel.AbsoluteSize.Y + 10)
             selectedText = data.line
         end)
     end
@@ -843,12 +809,14 @@ local function refreshVault()
     vaultScroll.CanvasSize = UDim2.new(0, 0, 0, vaultLayout.AbsoluteContentSize.Y + 10)
 end
 
--- push ke vault saja, live TIDAK di-update otomatis
+-- push ke vault saja (live TIDAK di-update otomatis)
 local function pushVault(method, remote, ...)
     if not spyEnabled then return end
     local line  = string.format('game:GetService("ReplicatedStorage")["%s"]:%s(%s)', remote.Name, method, serialize({...}))
     local title = remote.Name .. " (" .. method .. ")"
     table.insert(vaultLogs, {title = title, line = line})
+    -- batasi jumlah log
+    if #vaultLogs > MAX_LOG then table.remove(vaultLogs, 1) end
     refreshVault()
 end
 
@@ -865,7 +833,7 @@ mt.__namecall = newcclosure(function(self, ...)
 end)
 setreadonly(mt, true)
 
--- toggle
+-- tombol toggle
 local spyBtn = createButton("Script Spy: OFF")
 spyBtn.MouseButton1Click:Connect(function()
     spyEnabled = not spyEnabled
@@ -874,7 +842,7 @@ spyBtn.MouseButton1Click:Connect(function()
     spyFloat.Visible = false
 end)
 
--- minimize
+-- minimize / restore
 spyMinBtn.MouseButton1Click:Connect(function()
     spyFrame.Visible = false
     spyFloat.Visible = true
@@ -888,8 +856,8 @@ end)
 clearBtn.MouseButton1Click:Connect(function()
     vaultLogs = {}
     refreshVault()
-    if liveLabel then liveLabel:Destroy() end
-    liveLabel = nil
+    liveLabel.Text = "-- klik log di kanan --"
+    liveScroll.CanvasSize = UDim2.new(0, 0, 0, liveLabel.AbsoluteSize.Y + 10)
 end)
 
 -- copy / exec
@@ -908,9 +876,9 @@ execBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- ======
--- END
--- ======
+-- ==============================================================
+-- END OF FILE
+-- ==============================================================
 
 -- Auto Pump
 local autoPumpEnabled = false
