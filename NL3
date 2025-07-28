@@ -854,6 +854,14 @@ spyBtn.MouseButton1Click:Connect(function()
     spyBtn.Text = spyFrame.Visible and "Script Spy: ON" or "Script Spy: OFF"
 end)
 
+-- Tambah tombol spy
+local spyBtn = createButton("Script Spy: OFF")
+spyBtn.MouseButton1Click:Connect(function()
+    spyFrame.Visible = not spyFrame.Visible
+    spyBtn.Text = spyFrame.Visible and "Script Spy: ON" or "Script Spy: OFF"
+end)
+
+
 -- ----------------------------------------------------------
 print("NLight SpyScript loaded – press 'Script Spy' button or RightShift to toggle.")
 
