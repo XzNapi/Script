@@ -815,36 +815,40 @@ if not spyFrame then
     spyFrame.Parent = gui
 end
 
-------------------------------------------------------------------
---  Drag Handler (TITLE-BAR HANDLE)   -> 100 % bisa digeser
-------------------------------------------------------------------
-local dragHandle = spyTitle   -- drag dari title bar
-local dragInput, dragStart, startPos
+-----------------------------------------------
+-- Title -----------
+-----------------------------------------------
+local spyTitle = spyFrame:FindFirstChild("Title") or Instance.new("TextLabel")
+spyTitle.Name = "Title"
+spyTitle.Size = UDim2.new(1, 0, 0, 30)
+spyTitle.Text = "Script Spy"
+spyTitle.Font = Enum.Font.GothamBold
+spyTitle.TextSize = 16
+spyTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+spyTitle.BackgroundTransparency = 1
+spyTitle.Parent = spyFrame
 
--- Utility: cek apakah pointer di dalam title bar
-local function isInsideTitle(pos)
-    local abs = dragHandle.AbsolutePosition
-    local size = dragHandle.AbsoluteSize
-    return pos.X >= abs.X and pos.X <= abs.X + size.X and
-           pos.Y >= abs.Y and pos.Y <= abs.Y + size.Y
-end
+------------------------------------------------------------------
+--  Drag Handler  (baru, pakai title bar)
+------------------------------------------------------------------
+local dragHandle = spyTitle   -- sekarang spyTitle sudah ada
+local dragStart, startPos
 
--- Begin drag
+-- Mulai drag
 dragHandle.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 and isInsideTitle(input.Position) then
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
         dragStart = input.Position
         startPos  = spyFrame.Position
         local conn
         conn = input.Changed:Connect(function()
             if input.UserInputState == Enum.UserInputState.End then
                 conn:Disconnect()
-                dragStart = nil
             end
         end)
     end
 end)
 
--- Movement
+-- Gerakkan
 UIS.InputChanged:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseMovement and dragStart then
         local delta = input.Position - dragStart
@@ -857,16 +861,6 @@ UIS.InputChanged:Connect(function(input)
     end
 end)
 
--- Title ----------------------------------------------------------
-local spyTitle = spyFrame:FindFirstChild("Title") or Instance.new("TextLabel")
-spyTitle.Name = "Title"
-spyTitle.Size = UDim2.new(1, 0, 0, 30)
-spyTitle.Text = "Script Spy"
-spyTitle.Font = Enum.Font.GothamBold
-spyTitle.TextSize = 16
-spyTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
-spyTitle.BackgroundTransparency = 1
-spyTitle.Parent = spyFrame
 
 -- Minimize -------------------------------------------------------
 local spyMinBtn = spyFrame:FindFirstChild("MinBtn") or Instance.new("TextButton")
